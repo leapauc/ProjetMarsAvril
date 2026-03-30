@@ -101,13 +101,13 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    // Vérifier email + mot de passe directement
+    // Vérifier email + mot de passe directement sur users
     const result = await pool.query(
       `
-      SELECT * 
-      FROM praticiens
-      WHERE email = $1 
-        AND password_hash = crypt($2, password_hash)
+      SELECT id_user, email, firstname, lastname, role, created_at
+      FROM users
+      WHERE email = $1
+        AND password = crypt($2, password)
       `,
       [email, password],
     );
@@ -118,22 +118,11 @@ exports.loginUser = async (req, res) => {
       });
     }
 
-    const praticien = result.rows[0];
+    const user = result.rows[0];
 
-    // Mise à jour de la dernière connexion
-    await pool.query(
-      `
-      UPDATE praticiens
-      SET last_conn = NOW()
-      WHERE id_praticien = $1
-      `,
-      [praticien.id_praticien],
-    );
-
-    // Réponse succès (sans JWT si tu veux simple)
     res.status(200).json({
       message: "Connexion réussie",
-      praticien,
+      user, // on renvoie user au lieu de praticien
     });
   } catch (error) {
     console.error(error);
