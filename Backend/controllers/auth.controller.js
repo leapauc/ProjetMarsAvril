@@ -1,9 +1,8 @@
 require("dotenv").config();
 const pool = require("../db"); // instance pg Pool
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-// POST /api/auth/register
+// POST /api/auth/register -> enregistrement d'un utilisateur
 exports.registerUser = async (req, res) => {
   try {
     const {
@@ -16,27 +15,45 @@ exports.registerUser = async (req, res) => {
       consentVersion,
     } = req.body;
 
-    // Vérifier si l'utilisateur existe déjà
-    const existingUser = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email],
-    );
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ message: "Email déjà utilisé" });
+    // Vérification champs obligatoires
+    if (!email || !password || !firstname || !lastname || !consentVersion) {
+      return res.status(400).json({
+        message: "Champs obligatoires manquants",
+      });
     }
 
-    // Hasher le mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Vérifier email unique
+    const existing = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
 
-    // Créer l'utilisateur
-    const newUser = await pool.query(
-      `INSERT INTO users 
+    if (existing.rows.length > 0) {
+      return res.status(400).json({
+        message: "Email déjà utilisé",
+      });
+    }
+
+    // Insertion avec hash directement en SQL (pgcrypto)
+    const result = await pool.query(
+      `
+      INSERT INTO users
       (email, password, firstname, lastname, phone, role, consent_date, consent_version, is_anonymized)
-      VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,FALSE)
-      RETURNING *`,
+      VALUES (
+        $1,
+        crypt($2, gen_salt('bf')),
+        $3,
+        $4,
+        $5,
+        $6,
+        NOW(),
+        $7,
+        FALSE
+      )
+      RETURNING id_user, email, firstname, lastname, role
+      `,
       [
         email,
-        hashedPassword,
+        password,
         firstname,
         lastname,
         phone || null,
@@ -45,64 +62,83 @@ exports.registerUser = async (req, res) => {
       ],
     );
 
-    const user = newUser.rows[0];
+    const user = result.rows[0];
 
-    // Enregistrer le consentement dans consent_log
+    // Log RGPD
     await pool.query(
-      `INSERT INTO consent_log (id_user, action, datetime, ipAddress, details)
-       VALUES ($1,'consent_given',NOW(),crypt($2, gen_salt('bf')),$3)`,
+      `
+      INSERT INTO consent_log (id_user, action, datetime, ipAddress, details)
+      VALUES ($1, 'consent_given', NOW(), crypt($2, gen_salt('bf')), $3)
+      `,
       [
         user.id_user,
         req.ip || "0.0.0.0",
-        `Inscription avec version ${consentVersion}`,
+        `Inscription - version ${consentVersion}`,
       ],
     );
 
     res.status(201).json({
-      message: "Utilisateur créé avec succès",
-      user: { id: user.id_user, email: user.email },
+      message: "Utilisateur créé",
+      user,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Erreur serveur" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Erreur serveur",
+    });
   }
 };
 
-// POST /api/auth/login
+// POST /api/auth/login -> authentification d'un utilisateur
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Vérifier si l'utilisateur existe
-    const userQuery = await pool.query("SELECT * FROM users WHERE email=$1", [
-      email,
-    ]);
-    if (userQuery.rows.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Email ou mot de passe incorrect" });
+    // Vérification des champs
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email et mot de passe requis",
+      });
     }
 
-    const user = userQuery.rows[0];
-
-    // Vérifier le mot de passe
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res
-        .status(400)
-        .json({ message: "Email ou mot de passe incorrect" });
-    }
-
-    // Générer un JWT
-    const token = jwt.sign(
-      { id_user: user.id_user, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
+    // Vérifier email + mot de passe directement
+    const result = await pool.query(
+      `
+      SELECT * 
+      FROM praticiens
+      WHERE email = $1 
+        AND password_hash = crypt($2, password_hash)
+      `,
+      [email, password],
     );
 
-    res.json({ message: "Connexion réussie", token });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Erreur serveur" });
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        message: "Email ou mot de passe incorrect",
+      });
+    }
+
+    const praticien = result.rows[0];
+
+    // Mise à jour de la dernière connexion
+    await pool.query(
+      `
+      UPDATE praticiens
+      SET last_conn = NOW()
+      WHERE id_praticien = $1
+      `,
+      [praticien.id_praticien],
+    );
+
+    // Réponse succès (sans JWT si tu veux simple)
+    res.status(200).json({
+      message: "Connexion réussie",
+      praticien,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Erreur serveur",
+    });
   }
 };
