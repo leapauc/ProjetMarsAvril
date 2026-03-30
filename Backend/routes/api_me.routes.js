@@ -3,6 +3,8 @@ const {
   getMyData,
   updateMyData,
   deleteMyData,
+  exportMyData,
+  exportMyDataPDF,
 } = require("../controllers/api_me.controller");
 /**
  * @swagger
@@ -188,5 +190,8 @@ router.put("/:id", updateMyData);
  *         description: Erreur serveur
  */
 router.delete("/:id", deleteMyData);
+
+router.get("/:id/export", exportMyData);
+router.get("/:id/export/pdf", exportMyDataPDF);
 
 module.exports = router;
