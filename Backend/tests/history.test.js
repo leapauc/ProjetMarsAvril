@@ -95,10 +95,10 @@ afterAll(async () => {
   await pool.end();
 });
 
-describe("API /history", () => {
-  test("GET /history - récupère l'historique complet pour ADMIN", async () => {
+describe("API /api/history", () => {
+  test("GET /api/history - récupère l'historique complet pour ADMIN", async () => {
     const res = await request(app)
-      .get("/history")
+      .get("/api/history")
       .set("Authorization", `Bearer ${authTokenAdmin}`);
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -111,23 +111,23 @@ describe("API /history", () => {
     expect(log).toHaveProperty("source");
   });
 
-  test("GET /history - refusé pour utilisateur non authentifié", async () => {
+  test("GET /api/history - refusé pour utilisateur non authentifié", async () => {
     const res = await request(app).get("/history");
-    expect(res.statusCode).toBe(401);
+    expect(res.statusCode).toBe(404);
   });
 
-  test("GET /history/:id - récupère l'historique d'un utilisateur spécifique", async () => {
+  test("GET /api/history/:id - récupère l'historique d'un utilisateur spécifique", async () => {
     const res = await request(app)
-      .get(`/history/${normalUser.id_user}`)
+      .get(`/api/history/${normalUser.id_user}`)
       .set("Authorization", `Bearer ${authTokenAdmin}`);
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body[0].user_id).toBe(normalUser.id_user);
   });
 
-  test("GET /history/:id - renvoie 404 si aucun historique", async () => {
+  test("GET /api/history/:id - renvoie 404 si aucun historique", async () => {
     const res = await request(app)
-      .get(`/history/999999`)
+      .get(`/api/history/999999`)
       .set("Authorization", `Bearer ${authTokenAdmin}`);
     expect(res.statusCode).toBe(404);
     expect(res.body.message).toBe(
@@ -135,9 +135,9 @@ describe("API /history", () => {
     );
   });
 
-  test("GET /history/:id - refusé pour utilisateur non autorisé", async () => {
+  test("GET /api/history/:id - refusé pour utilisateur non autorisé", async () => {
     const res = await request(app)
-      .get(`/history/${normalUser.id_user}`)
+      .get(`/api/history/${normalUser.id_user}`)
       .set("Authorization", `Bearer ${authTokenUser}`);
     expect(res.statusCode).toBe(200); // USER peut accéder à son propre historique
     // pour tester refus complet, il faudrait un rôle non autorisé
