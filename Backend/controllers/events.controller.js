@@ -1,5 +1,6 @@
 require("dotenv").config();
-const pool = require("../db"); // instance pg Pool
+const pool = require("../db");
+const logUserAction = require("../utils/logUserAction");
 
 // GET /event/ -> Liste des événements publiés
 exports.getAllEvents = async (req, res) => {
@@ -15,16 +16,45 @@ exports.getAllEvents = async (req, res) => {
 };
 
 // GET /event/:id -> Détail d’un événement
+// exports.getEventById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const eventQuery = await pool.query(
+//       "SELECT * FROM events WHERE id_event = $1",
+//       [id],
+//     );
+//     if (eventQuery.rows.length === 0) {
+//       return res.status(404).json({ message: "Événement non trouvé" });
+//     }
+//     res.json(eventQuery.rows[0]);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Erreur serveur" });
+//   }
+// };
+
 exports.getEventById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const eventQuery = await pool.query(
-      "SELECT * FROM events WHERE id_event = $1",
+      `SELECT e.*,
+              e.max_participants - COALESCE(r.registered_count, 0) AS remaining_spots
+       FROM events e
+       LEFT JOIN (
+           SELECT id_event, COUNT(*) AS registered_count
+           FROM registrations
+           WHERE status != 'cancelled'
+           GROUP BY id_event
+       ) r ON e.id_event = r.id_event
+       WHERE e.id_event = $1`,
       [id],
     );
+
     if (eventQuery.rows.length === 0) {
       return res.status(404).json({ message: "Événement non trouvé" });
     }
+
     res.json(eventQuery.rows[0]);
   } catch (err) {
     console.error(err);
@@ -59,6 +89,14 @@ exports.createEvent = async (req, res) => {
         id_orga,
         is_published || false,
       ],
+    );
+
+    await logUserAction(
+      id_orga,
+      id_orga,
+      "event_created",
+      insertQuery.rows[0].id_event,
+      "Création d’un nouvel événement",
     );
 
     res
@@ -114,6 +152,14 @@ exports.updateEvent = async (req, res) => {
       ],
     );
 
+    await logUserAction(
+      id_orga,
+      id_orga,
+      "event_updated",
+      id,
+      "Modification des détails de l’événement",
+    );
+
     res.json({ message: "Événement mis à jour", event: updateQuery.rows[0] });
   } catch (err) {
     console.error(err);
@@ -125,23 +171,28 @@ exports.updateEvent = async (req, res) => {
 exports.deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    // const { id_orga } = req.body;
 
     // Vérifier que l'événement existe
     const eventQuery = await pool.query(
       "SELECT * FROM events WHERE id_event = $1",
       [id],
     );
+
     if (eventQuery.rows.length === 0) {
       return res.status(404).json({ message: "Événement non trouvé" });
     }
 
-    // // Vérifier que l'utilisateur est l'organisateur
-    // if (eventQuery.rows[0].id_orga !== id_orga) {
-    //   return res
-    //     .status(403)
-    //     .json({ message: "Vous n’êtes pas l’organisateur de cet événement" });
-    // }
+    const event = eventQuery.rows[0];
+    const id_orga = event.id_orga;
+
+    // ✅ Inclure le titre dans le log
+    await logUserAction(
+      id_orga,
+      id_orga,
+      "event_deleted",
+      id,
+      `Suppression de l’événement : "${event.title}"`,
+    );
 
     await pool.query("DELETE FROM events WHERE id_event = $1", [id]);
 

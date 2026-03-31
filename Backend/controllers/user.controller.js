@@ -1,5 +1,6 @@
 require("dotenv").config();
 const pool = require("../db");
+const logUserAction = require("../utils/logUserAction");
 
 // GET /user -> récupérer tous les utilisateurs
 exports.getAllUsers = async (req, res) => {
@@ -49,7 +50,6 @@ exports.createUser = async (req, res) => {
       consentVersion,
     } = req.body;
 
-    // Vérifier email unique
     const existing = await pool.query("SELECT * FROM users WHERE email=$1", [
       email,
     ]);
@@ -73,6 +73,15 @@ exports.createUser = async (req, res) => {
       ],
     );
 
+    // Log de l'inscription
+    await logUserAction(
+      newUser.rows[0].id_user,
+      newUser.rows[0].id_user,
+      "user_registered",
+      null,
+      "Inscription par l’utilisateur",
+    );
+
     res
       .status(201)
       .json({ message: "Utilisateur créé", user: newUser.rows[0] });
@@ -93,7 +102,6 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
-    // Vérifier email unique si changement
     if (email && email !== user.rows[0].email) {
       const existing = await pool.query("SELECT * FROM users WHERE email=$1", [
         email,
@@ -105,10 +113,26 @@ exports.updateUser = async (req, res) => {
 
     const updatedUser = await pool.query(
       `UPDATE users 
-       SET email=$1, firstname=$2, lastname=$3, phone=$4, role=$5
-       WHERE id_user=$6
-       RETURNING id_user, email, firstname, lastname, phone, role`,
-      [email, firstname, lastname, phone || null, role, id],
+   SET email=$1, firstname=$2, lastname=$3, phone=$4, role=$5
+   WHERE id_user=$6
+   RETURNING id_user, email, firstname, lastname, phone, role`,
+      [
+        email || user.rows[0].email,
+        firstname || user.rows[0].firstname,
+        lastname || user.rows[0].lastname,
+        phone || user.rows[0].phone,
+        role || user.rows[0].role,
+        id,
+      ],
+    );
+
+    // Log modification
+    await logUserAction(
+      id,
+      id,
+      "user_data_modified",
+      null,
+      "Modification des informations personnelles",
     );
 
     res.json({ message: "Utilisateur mis à jour", user: updatedUser.rows[0] });
@@ -128,7 +152,6 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
-    // Anonymisation email unique
     await pool.query(
       `UPDATE users
        SET 
@@ -140,6 +163,9 @@ exports.deleteUser = async (req, res) => {
        WHERE id_user = $1`,
       [id],
     );
+
+    // Log anonymisation
+    await logUserAction(id, id, "data_deleted", null, "Anonymisation RGPD");
 
     res.json({ message: "Utilisateur anonymisé (RGPD)" });
   } catch (err) {

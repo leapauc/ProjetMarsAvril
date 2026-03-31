@@ -1,102 +1,133 @@
-// tests/api_me.test.js
 const request = require("supertest");
-const app = require("../app");
+const app = require("../app"); // Ton express app
 const pool = require("../db");
 
+let testUser;
+let authToken;
+
+beforeAll(async () => {
+  // Création d'un utilisateur test avec toutes les colonnes NOT NULL
+  const now = new Date();
+  const result = await pool.query(
+    `INSERT INTO users 
+       (email, firstname, lastname, phone, role, password, consent_date, consent_version, is_anonymized, created_at)
+     VALUES ($1, $2, $3, $4, $5, crypt($6, gen_salt('bf')), $7, $8, $9, $10)
+     RETURNING *`,
+    [
+      "test.user@example.com", // email
+      "Test", // firstname
+      "User", // lastname
+      "0600000000", // phone
+      "USER", // role
+      "Password123!", // password
+      now, // consent_date
+      "v1", // consent_version
+      false, // is_anonymized
+      now, // created_at
+    ],
+  );
+  testUser = result.rows[0];
+
+  // Connexion pour récupérer le token
+  const loginRes = await request(app)
+    .post("/api/auth/login")
+    .send({ email: "test.user@example.com", password: "Password123!" });
+
+  authToken = loginRes.body.token;
+});
+
+afterAll(async () => {
+  // Suppression sécurisée : logs liés
+  await pool.query(
+    `DELETE FROM user_action_log WHERE id_target_user=$1 OR id_actor_user=$1`,
+    [testUser.id_user],
+  );
+  await pool.query(`DELETE FROM consent_log WHERE id_user=$1`, [
+    testUser.id_user,
+  ]);
+  // Suppression de l'utilisateur
+  await pool.query("DELETE FROM users WHERE id_user=$1", [testUser.id_user]);
+  await pool.end();
+});
+
 describe("API /api/me/:id", () => {
-  let testUserId;
-
-  // Créer un utilisateur temporaire pour les tests
-  beforeAll(async () => {
-    const result = await pool.query(
-      `INSERT INTO users (email, password, firstname, lastname, phone, role, consent_date, consent_version)
-       VALUES ('test.me@example.com', crypt('password123', gen_salt('bf')), 'Test', 'User', '0601020304', 'USER', NOW(), 'v1')
-       RETURNING id_user`,
-    );
-    testUserId = result.rows[0].id_user;
+  test("GET /api/me/:id - récupère les données personnelles", async () => {
+    const res = await request(app)
+      .get(`/api/me/${testUser.id_user}`)
+      .set("Authorization", `Bearer ${authToken}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.email).toBe(testUser.email);
   });
 
-  afterAll(async () => {
-    const crypto = require("crypto");
+  test("PUT /api/me/:id - met à jour les données personnelles", async () => {
+    const updatedData = {
+      email: "updated.user@example.com",
+      firstname: "Updated",
+      lastname: "User",
+      phone: "0612345678",
+    };
+    const res = await request(app)
+      .put(`/api/me/${testUser.id_user}`)
+      .set("Authorization", `Bearer ${authToken}`)
+      .send(updatedData);
 
-    const uniqueEmail = crypto
-      .createHash("sha256")
-      .update(`test.me@example.com-${Date.now()}`)
-      .digest("hex");
+    expect(res.statusCode).toBe(200);
+    expect(res.body.user.email).toBe(updatedData.email);
+    expect(res.body.user.firstname).toBe(updatedData.firstname);
 
+    // Réinitialiser l'utilisateur
     await pool.query(
-      `UPDATE users
-       SET email = $1,
-           firstname = 'Utilisateur supprimé',
-           lastname = 'Utilisateur supprimé',
-           phone = NULL,
-           is_anonymized = TRUE
-     WHERE id_user = $2`,
-      [uniqueEmail, testUserId],
+      `UPDATE users SET email=$1, firstname=$2, lastname=$3, phone=$4 WHERE id_user=$5`,
+      [
+        testUser.email,
+        testUser.firstname,
+        testUser.lastname,
+        testUser.phone,
+        testUser.id_user,
+      ],
     );
-
-    await pool.end();
   });
 
-  describe("GET /api/me/:id", () => {
-    it("récupère les données d'un utilisateur existant", async () => {
-      const res = await request(app).get(`/api/me/${testUserId}`);
-      expect(res.statusCode).toBe(200);
-      expect(res.body.email).toBe("test.me@example.com");
-      expect(res.body.firstname).toBe("Test");
-    });
+  test("DELETE /api/me/:id - anonymise l'utilisateur", async () => {
+    const res = await request(app)
+      .delete(`/api/me/${testUser.id_user}`)
+      .set("Authorization", `Bearer ${authToken}`);
 
-    it("retourne 404 si l'utilisateur n'existe pas", async () => {
-      const res = await request(app).get("/api/me/999999");
-      expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe("Utilisateur non trouvé");
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.message).toBe("Compte anonymisé avec succès");
+
+    // Réinitialiser les données pour autres tests
+    await pool.query(
+      `UPDATE users SET email=$1, firstname=$2, lastname=$3, phone=$4, is_anonymized=FALSE WHERE id_user=$5`,
+      [
+        testUser.email,
+        testUser.firstname,
+        testUser.lastname,
+        testUser.phone,
+        testUser.id_user,
+      ],
+    );
   });
 
-  describe("PUT /api/me/:id", () => {
-    // it("met à jour les données d'un utilisateur", async () => {
-    //   const res = await request(app).put(`/api/me/${testUserId}`).send({
-    //     email: "update.me@example.com",
-    //     firstname: "Updated",
-    //     lastname: "User",
-    //     phone: "0600000000",
-    //   });
-    //   expect(res.statusCode).toBe(200);
-    //   expect(res.body.message).toBe("Données mises à jour");
-    //   expect(res.body.user.email).toBe("update.me@example.com");
-    //   expect(res.body.user.firstname).toBe("Updated");
-    // });
+  test("GET /api/me/:id/export - export JSON", async () => {
+    const res = await request(app)
+      .get(`/api/me/${testUser.id_user}/export`)
+      .set("Authorization", `Bearer ${authToken}`);
 
-    it("retourne 404 si l'utilisateur n'existe pas", async () => {
-      const res = await request(app).put("/api/me/999999").send({
-        email: "notfound@example.com",
-        firstname: "No",
-        lastname: "User",
-      });
-      expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe("Utilisateur non trouvé");
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.body.email).toBe(testUser.email);
   });
 
-  describe("DELETE /api/me/:id", () => {
-    it("anonymise l'utilisateur existant", async () => {
-      const res = await request(app).delete(`/api/me/${testUserId}`);
-      expect(res.statusCode).toBe(200);
-      expect(res.body.message).toBe("Compte anonymisé avec succès");
+  test("GET /api/me/:id/export/pdf - export PDF", async () => {
+    const res = await request(app)
+      .get(`/api/me/${testUser.id_user}/export/pdf`)
+      .set("Authorization", `Bearer ${authToken}`);
 
-      // Vérifier dans la BDD que l'utilisateur est bien anonymisé
-      const userCheck = await pool.query(
-        "SELECT email, firstname, lastname, is_anonymized FROM users WHERE id_user=$1",
-        [testUserId],
-      );
-      expect(userCheck.rows[0].firstname).toBe("Utilisateur supprimé");
-      expect(userCheck.rows[0].is_anonymized).toBe(true);
-    });
-
-    it("retourne 404 si l'utilisateur n'existe pas", async () => {
-      const res = await request(app).delete("/api/me/999999");
-      expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe("Utilisateur non trouvé");
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toBe("application/pdf");
+    expect(res.headers["content-disposition"]).toContain(
+      `user_${testUser.id_user}_data.pdf`,
+    );
   });
 });

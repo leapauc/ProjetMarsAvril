@@ -1,10 +1,9 @@
 require("dotenv").config();
 const pool = require("../db");
 const PDFDocument = require("pdfkit");
+const logUserAction = require("../utils/logUserAction");
 
-//////////////////////////////////////////////////////
-// 🔧 Fonction commune (SAFE)
-//////////////////////////////////////////////////////
+// Fonction commune (SAFE)
 const getUserWithEvents = async (id) => {
   const userQuery = await pool.query(
     `SELECT id_user, email, firstname, lastname, phone, role, consent_date, consent_version, is_anonymized, created_at
@@ -47,9 +46,8 @@ const getUserWithEvents = async (id) => {
   return { ...user, events };
 };
 
-//////////////////////////////////////////////////////
-// 📌 GET /me/:id
-//////////////////////////////////////////////////////
+// ----------------------------------------------------------
+// GET /me/:id
 exports.getMyData = async (req, res) => {
   try {
     const { id } = req.params;
@@ -66,6 +64,14 @@ exports.getMyData = async (req, res) => {
       [id, req.ip || "0.0.0.0", "Consultation des données personnelles"],
     );
 
+    await logUserAction(
+      id,
+      id,
+      "data_viewed",
+      null,
+      "Consultation des données personnelles",
+    );
+
     res.json(data);
   } catch (err) {
     console.error("❌ getMyData:", err);
@@ -73,9 +79,7 @@ exports.getMyData = async (req, res) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// ✏️ PUT /me/:id
-//////////////////////////////////////////////////////
+// PUT /me/:id
 exports.updateMyData = async (req, res) => {
   try {
     const { id } = req.params;
@@ -103,6 +107,14 @@ exports.updateMyData = async (req, res) => {
       [id, req.ip || "0.0.0.0", "Modification des données personnelles"],
     );
 
+    await logUserAction(
+      id,
+      id,
+      "data_updated",
+      null,
+      "Modification des données personnelles",
+    );
+
     res.json({ message: "Données mises à jour", user: updatedUser.rows[0] });
   } catch (err) {
     console.error("❌ updateMyData:", err);
@@ -110,9 +122,7 @@ exports.updateMyData = async (req, res) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// 🧹 DELETE /me/:id (RGPD)
-//////////////////////////////////////////////////////
+// DELETE /me/:id (RGPD)
 exports.deleteMyData = async (req, res) => {
   try {
     const { id } = req.params;
@@ -143,6 +153,14 @@ exports.deleteMyData = async (req, res) => {
       [id, req.ip || "0.0.0.0", "Anonymisation du compte"],
     );
 
+    await logUserAction(
+      id,
+      id,
+      "data_deleted",
+      null,
+      "Anonymisation du compte",
+    );
+
     res.json({ message: "Compte anonymisé avec succès" });
   } catch (err) {
     console.error("❌ deleteMyData:", err);
@@ -150,9 +168,7 @@ exports.deleteMyData = async (req, res) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// 📦 EXPORT JSON
-//////////////////////////////////////////////////////
+// EXPORT JSON
 exports.exportMyData = async (req, res) => {
   try {
     const { id } = req.params;
@@ -175,6 +191,14 @@ exports.exportMyData = async (req, res) => {
     );
     res.setHeader("Content-Type", "application/json");
 
+    await logUserAction(
+      id,
+      id,
+      "data_exported",
+      null,
+      "Export JSON des données personnelles",
+    );
+
     res.send(JSON.stringify(data, null, 2));
   } catch (err) {
     console.error("❌ export JSON:", err);
@@ -182,9 +206,7 @@ exports.exportMyData = async (req, res) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// 📄 EXPORT PDF (FIX FINAL)
-//////////////////////////////////////////////////////
+// EXPORT PDF (FIX FINAL)
 exports.exportMyDataPDF = async (req, res) => {
   try {
     const { id } = req.params;
@@ -205,7 +227,7 @@ exports.exportMyDataPDF = async (req, res) => {
       [id, req.ip || "0.0.0.0", "Export PDF des données personnelles"],
     );
 
-    // ⚠️ Headers AVANT pipe
+    // Headers AVANT pipe
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="user_${id}_data.pdf"`,
@@ -220,9 +242,7 @@ exports.exportMyDataPDF = async (req, res) => {
 
     doc.pipe(res);
 
-    //////////////////////////////////////////////////////
-    // 🧾 CONTENU
-    //////////////////////////////////////////////////////
+    // CONTENU
     doc.fontSize(20).text("Export des données personnelles", {
       align: "center",
     });
@@ -266,6 +286,14 @@ exports.exportMyDataPDF = async (req, res) => {
     doc.fontSize(10).text(`Export généré le : ${new Date().toLocaleString()}`, {
       align: "right",
     });
+
+    await logUserAction(
+      id,
+      id,
+      "data_exported_pdf",
+      null,
+      "Export PDF des données personnelles",
+    );
 
     doc.end();
   } catch (err) {

@@ -10,6 +10,7 @@ const userRoutes = require("./routes/user.routes");
 const registrationRoutes = require("./routes/registration.routes");
 const meRoutes = require("./routes/api_me.routes");
 const consentRoutes = require("./routes/consent.routes");
+const historyRoutes = require("./routes/history.routes");
 
 const app = express();
 
@@ -23,5 +24,6 @@ app.use("/api/user", userRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/consent", consentRoutes);
+app.use("/api/history", historyRoutes);
 
 module.exports = app; // <-- exporte l'app Express

@@ -1,117 +1,94 @@
-// tests/auth.test.js
 const request = require("supertest");
 const app = require("../app");
 const pool = require("../db");
+const jwt = require("jsonwebtoken");
+
+let token;
+let testUserId;
 
 beforeAll(async () => {
-  // Supprimer les utilisateurs test existants
-  await pool.query(
-    `DELETE FROM consent_log WHERE id_user IN (
-      SELECT id_user FROM users WHERE email IN ($1, $2)
-    )`,
-    ["test.auth@example.com", "new.auth@example.com"],
+  // créer un utilisateur test
+  const userRes = await pool.query(
+    `INSERT INTO users (email, password, firstname, lastname, role, consent_version, consent_date)
+     VALUES ('consent@test.com', 'password', 'Consent', 'User', 'USER', '1.0', NOW())
+     RETURNING id_user`,
   );
-  await pool.query(`DELETE FROM users WHERE email IN ($1, $2)`, [
-    "test.auth@example.com",
-    "new.auth@example.com",
-  ]);
 
-  // Créer un utilisateur test pour login
-  await pool.query(
-    `INSERT INTO users 
-      (email, password, firstname, lastname, role, consent_date, consent_version, is_anonymized)
-     VALUES ($1, crypt($2, gen_salt('bf')), $3, $4, $5, NOW(), 'v1', FALSE)`,
-    ["test.auth@example.com", "password123", "Test", "Auth", "USER"],
+  testUserId = userRes.rows[0].id_user;
+
+  // créer un token JWT
+  token = jwt.sign(
+    { id: testUserId, email: "consent@test.com", role: "USER" },
+    process.env.JWT_SECRET,
   );
 });
 
 afterAll(async () => {
-  // Supprimer les logs puis utilisateurs test
-  await pool.query(
-    `DELETE FROM consent_log WHERE id_user IN (
-      SELECT id_user FROM users WHERE email IN ($1, $2)
-    )`,
-    ["test.auth@example.com", "new.auth@example.com"],
-  );
-  await pool.query(`DELETE FROM users WHERE email IN ($1, $2)`, [
-    "test.auth@example.com",
-    "new.auth@example.com",
-  ]);
+  await pool.query("DELETE FROM consent_log WHERE id_user = $1", [testUserId]);
+  await pool.query("DELETE FROM users WHERE id_user = $1", [testUserId]);
   await pool.end();
 });
 
-describe("Auth API", () => {
-  test("POST /api/auth/register -> crée un nouvel utilisateur", async () => {
-    const newUser = {
-      email: "new.auth@example.com",
-      password: "password123",
-      firstname: "New",
-      lastname: "Auth",
-      role: "USER",
-      consentVersion: "v1",
-    };
+describe("Consent API Endpoints", () => {
+  describe("POST /api/consent", () => {
+    it("devrait mettre à jour le consentement", async () => {
+      const res = await request(app)
+        .post("/api/consent")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          id_user: testUserId,
+          consentVersion: "2.0",
+        });
 
-    const res = await request(app).post("/api/auth/register").send(newUser);
-    expect(res.statusCode).toBe(201);
-    expect(res.body.message).toBe("Utilisateur créé");
-    expect(res.body.user.email).toBe("new.auth@example.com");
-  });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toBe("Consentement mis à jour avec succès");
 
-  test("POST /api/auth/register -> retourne 400 si email déjà utilisé", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "test.auth@example.com",
-      password: "password123",
-      firstname: "Dup",
-      lastname: "Dup",
-      consentVersion: "v1",
+      // vérifier en DB
+      const user = await pool.query(
+        "SELECT consent_version FROM users WHERE id_user = $1",
+        [testUserId],
+      );
+
+      expect(user.rows[0].consent_version).toBe("2.0");
     });
-    expect(res.statusCode).toBe(400);
-    expect(res.body.message).toBe("Email déjà utilisé");
-  });
 
-  test("POST /api/auth/register -> retourne 400 si champs manquants", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "incomplete@example.com",
-      password: "pwd",
-    });
-    expect(res.statusCode).toBe(400);
-    expect(res.body.message).toBe("Champs obligatoires manquants");
-  });
+    it("devrait retourner 404 si utilisateur inexistant", async () => {
+      const res = await request(app)
+        .post("/api/consent")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          id_user: 999999,
+          consentVersion: "2.0",
+        });
 
-  test("POST /api/auth/login -> connexion réussie", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "test.auth@example.com",
-      password: "password123",
+      expect(res.statusCode).toBe(404);
+      expect(res.body.message).toBe("Utilisateur non trouvé");
     });
-    expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe("Connexion réussie");
-    expect(res.body.user).toBeDefined();
-    expect(res.body.user.email).toBe("test.auth@example.com");
-  });
 
-  test("POST /api/auth/login -> retourne 401 si mot de passe incorrect", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "test.auth@example.com",
-      password: "wrongpassword",
-    });
-    expect(res.statusCode).toBe(401);
-    expect(res.body.message).toBe("Email ou mot de passe incorrect");
-  });
+    it("devrait refuser sans token", async () => {
+      const res = await request(app).post("/api/consent").send({
+        id_user: testUserId,
+        consentVersion: "2.0",
+      });
 
-  test("POST /api/auth/login -> retourne 401 si email inexistant", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "unknown@example.com",
-      password: "password123",
+      expect(res.statusCode).toBe(401);
     });
-    expect(res.statusCode).toBe(401);
-    expect(res.body.message).toBe("Email ou mot de passe incorrect");
-  });
 
-  test("POST /api/auth/login -> retourne 400 si champs manquants", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "test.auth@example.com",
+    it("devrait refuser avec mauvais rôle", async () => {
+      const badToken = jwt.sign(
+        { id: testUserId, role: "ADMIN" }, // pas autorisé
+        process.env.JWT_SECRET,
+      );
+
+      const res = await request(app)
+        .post("/api/consent")
+        .set("Authorization", `Bearer ${badToken}`)
+        .send({
+          id_user: testUserId,
+          consentVersion: "3.0",
+        });
+
+      expect(res.statusCode).toBe(403);
     });
-    expect(res.statusCode).toBe(400);
-    expect(res.body.message).toBe("Email et mot de passe requis");
   });
 });

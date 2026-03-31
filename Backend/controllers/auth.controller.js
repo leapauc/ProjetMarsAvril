@@ -1,6 +1,7 @@
 require("dotenv").config();
 const pool = require("../db");
 const jwt = require("jsonwebtoken");
+const logUserAction = require("../utils/logUserAction");
 
 // Fonction utilitaire pour générer un token
 const generateToken = (user) => {
@@ -92,6 +93,13 @@ exports.registerUser = async (req, res) => {
         `Inscription - version ${consentVersion}`,
       ],
     );
+    await logUserAction(
+      user.id_user,
+      user.id_user,
+      "user_registered",
+      null,
+      `Inscription - version ${consentVersion}`,
+    );
 
     // Générer token après inscription
     const token = generateToken(user);
@@ -140,6 +148,13 @@ exports.loginUser = async (req, res) => {
 
     const user = result.rows[0];
 
+    await logUserAction(
+      user.id_user,
+      user.id_user,
+      "user_registered",
+      null,
+      `Connexion`,
+    );
     // Génération token
     const token = generateToken(user);
 

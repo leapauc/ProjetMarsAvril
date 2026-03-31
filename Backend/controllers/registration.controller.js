@@ -1,5 +1,6 @@
 require("dotenv").config();
 const pool = require("../db"); // instance pg Pool
+const logUserAction = require("../utils/logUserAction");
 
 // GET /:id/registrations -> récupérer les inscriptions d’un utilisateur ou d’un événement
 exports.getRegistrationById = async (req, res) => {
@@ -60,7 +61,6 @@ exports.registerToEvent = async (req, res) => {
     const id_event = req.params.id;
     const { id_user } = req.body;
 
-    // Vérifier que l'événement existe et est publié
     const eventQuery = await pool.query(
       "SELECT * FROM events WHERE id_event=$1 AND is_published=TRUE",
       [id_event],
@@ -71,7 +71,6 @@ exports.registerToEvent = async (req, res) => {
         .json({ message: "Événement non trouvé ou non publié" });
     }
 
-    // Vérifier si l'utilisateur est déjà inscrit
     const existing = await pool.query(
       "SELECT * FROM registrations WHERE id_user=$1 AND id_event=$2",
       [id_user, id_event],
@@ -82,7 +81,6 @@ exports.registerToEvent = async (req, res) => {
         .json({ message: "Vous êtes déjà inscrit à cet événement" });
     }
 
-    // Vérifier le nombre maximum de participants
     const registrationCount = await pool.query(
       "SELECT COUNT(*) FROM registrations WHERE id_event=$1",
       [id_event],
@@ -96,11 +94,19 @@ exports.registerToEvent = async (req, res) => {
         .json({ message: "Nombre maximum de participants atteint" });
     }
 
-    // Créer l'inscription
     const insertQuery = await pool.query(
       `INSERT INTO registrations (id_user, id_event, registered_at, status)
        VALUES ($1,$2,NOW(),'pending') RETURNING *`,
       [id_user, id_event],
+    );
+
+    // 🔹 Log de l'inscription
+    await logUserAction(
+      id_user,
+      id_user,
+      "event_registration",
+      id_event,
+      "Inscription à un événement",
     );
 
     res.status(201).json({
@@ -117,23 +123,29 @@ exports.registerToEvent = async (req, res) => {
 exports.unregisterFromEvent = async (req, res) => {
   try {
     const id_registration = req.params.id;
-    //const { id_user } = req.body; // utilisateur qui annule
 
-    // Vérifier que l'inscription existe
     const regQuery = await pool.query(
-      "SELECT * FROM registrations WHERE id=$1", // AND id_user=$2",
-      [id_registration], //, id_user],
+      "SELECT * FROM registrations WHERE id=$1",
+      [id_registration],
     );
     if (regQuery.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "Inscription non trouvée pour cet utilisateur" });
+      return res.status(404).json({ message: "Inscription non trouvée" });
     }
 
-    // Supprimer l'inscription
+    const { id_user, id_event } = regQuery.rows[0];
+
     await pool.query("DELETE FROM registrations WHERE id=$1", [
       id_registration,
     ]);
+
+    // 🔹 Log de l'annulation
+    await logUserAction(
+      id_user,
+      id_user,
+      "event_registration_cancelled",
+      id_event,
+      "Annulation inscription",
+    );
 
     res.json({ message: "Inscription annulée avec succès" });
   } catch (err) {

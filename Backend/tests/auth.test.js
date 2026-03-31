@@ -1,78 +1,83 @@
-// tests/auth.test.js
 const request = require("supertest");
-const app = require("../app"); // ton fichier app.js
+const app = require("../app");
 const pool = require("../db");
 
-describe("Auth API", () => {
-  const testEmail = "test.login@example.com";
-  const testPassword = "password123";
-  let testUserId;
+let testEmail = "auth@test.com";
 
-  beforeAll(async () => {
-    // Nettoyer tout utilisateur test précédent
-    await pool.query(
-      `DELETE FROM consent_log WHERE id_user IN (
-        SELECT id_user FROM users WHERE email = $1
-      )`,
-      [testEmail],
-    );
-    await pool.query(`DELETE FROM users WHERE email = $1`, [testEmail]);
+afterAll(async () => {
+  await pool.query("DELETE FROM users WHERE email = $1", [testEmail]);
+  await pool.end();
+});
 
-    // Créer un utilisateur test
-    const result = await pool.query(
-      `INSERT INTO users
-        (email, password, firstname, lastname, role, consent_date, consent_version, is_anonymized)
-       VALUES ($1, crypt($2, gen_salt('bf')), $3, $4, $5, NOW(), 'v1', FALSE)
-       RETURNING id_user`,
-      [testEmail, testPassword, "Test", "Login", "USER"],
-    );
-    testUserId = result.rows[0].id_user;
-  });
+describe("Auth API Endpoints", () => {
+  describe("POST /api/auth/register", () => {
+    it("devrait créer un utilisateur", async () => {
+      const res = await request(app).post("/api/auth/register").send({
+        email: testEmail,
+        password: "password123",
+        firstname: "John",
+        lastname: "Doe",
+        consentVersion: "1.0",
+      });
 
-  afterAll(async () => {
-    // Supprimer logs et utilisateur test
-    await pool.query("DELETE FROM consent_log WHERE id_user=$1", [testUserId]);
-    await pool.query("DELETE FROM users WHERE id_user=$1", [testUserId]);
-    await pool.end();
-  });
-
-  test("POST /api/auth/login -> connexion réussie", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: testEmail,
-      password: testPassword,
+      expect(res.statusCode).toBe(201);
+      expect(res.body.message).toBe("Utilisateur créé");
+      expect(res.body.token).toBeDefined();
+      expect(res.body.user.email).toBe(testEmail);
     });
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.message).toBe("Connexion réussie");
-    expect(res.body.user.email).toBe(testEmail);
-  });
+    it("devrait refuser si champs manquants", async () => {
+      const res = await request(app).post("/api/auth/register").send({
+        email: "test2@test.com",
+      });
 
-  test("POST /api/auth/login -> retourne 401 si mot de passe incorrect", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: testEmail,
-      password: "wrongpassword",
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe("Champs obligatoires manquants");
     });
 
-    expect(res.statusCode).toBe(401);
-    expect(res.body.message).toBe("Email ou mot de passe incorrect");
+    it("devrait refuser si email déjà utilisé", async () => {
+      const res = await request(app).post("/api/auth/register").send({
+        email: testEmail,
+        password: "password123",
+        firstname: "John",
+        lastname: "Doe",
+        consentVersion: "1.0",
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe("Email déjà utilisé");
+    });
   });
 
-  test("POST /api/auth/login -> retourne 401 si email inexistant", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "unknown@example.com",
-      password: testPassword,
+  describe("POST /api/auth/login", () => {
+    it("devrait connecter un utilisateur", async () => {
+      const res = await request(app).post("/api/auth/login").send({
+        email: testEmail,
+        password: "password123",
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toBe("Connexion réussie");
+      expect(res.body.token).toBeDefined();
     });
 
-    expect(res.statusCode).toBe(401);
-    expect(res.body.message).toBe("Email ou mot de passe incorrect");
-  });
+    it("devrait refuser si mauvais mot de passe", async () => {
+      const res = await request(app).post("/api/auth/login").send({
+        email: testEmail,
+        password: "wrongpassword",
+      });
 
-  test("POST /api/auth/login -> retourne 400 si champs manquants", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: testEmail,
+      expect(res.statusCode).toBe(401);
+      expect(res.body.message).toBe("Email ou mot de passe incorrect");
     });
 
-    expect(res.statusCode).toBe(400);
-    expect(res.body.message).toBe("Email et mot de passe requis");
+    it("devrait refuser si champs manquants", async () => {
+      const res = await request(app).post("/api/auth/login").send({
+        email: testEmail,
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe("Email et mot de passe requis");
+    });
   });
 });

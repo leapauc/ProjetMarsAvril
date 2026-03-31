@@ -60,6 +60,9 @@ const router = express.Router();
  *                 message:
  *                   type: string
  *                   example: "Utilisateur créé"
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *                 user:
  *                   type: object
  *                   properties:
@@ -79,15 +82,20 @@ const router = express.Router();
  *                       type: string
  *                       example: "USER"
  *       400:
- *         description: Champs manquants ou email déjà utilisé
+ *         description: Erreur de validation
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Champs obligatoires manquants"
+ *               oneOf:
+ *                 - properties:
+ *                     message:
+ *                       type: string
+ *                       example: "Champs obligatoires manquants"
+ *                 - properties:
+ *                     message:
+ *                       type: string
+ *                       example: "Email déjà utilisé"
  *       500:
  *         description: Erreur serveur
  *         content:
@@ -105,7 +113,7 @@ router.post("/register", registerUser);
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Authentifie un utilisateur (praticien)
+ *     summary: Authentifie un utilisateur
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -120,10 +128,10 @@ router.post("/register", registerUser);
  *               email:
  *                 type: string
  *                 format: email
- *                 example: "praticien@example.com"
+ *                 example: "alice.dupont@email.com"
  *               password:
  *                 type: string
- *                 example: "MotDePasse123!"
+ *                 example: "123456789"
  *     responses:
  *       200:
  *         description: Connexion réussie
@@ -135,25 +143,27 @@ router.post("/register", registerUser);
  *                 message:
  *                   type: string
  *                   example: "Connexion réussie"
- *                 praticien:
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 user:
  *                   type: object
  *                   properties:
- *                     id_praticien:
+ *                     id_user:
  *                       type: integer
  *                       example: 1
  *                     email:
  *                       type: string
- *                       example: "praticien@example.com"
+ *                       example: "user@example.com"
  *                     firstname:
  *                       type: string
  *                       example: "Alice"
  *                     lastname:
  *                       type: string
  *                       example: "Dupont"
- *                     last_conn:
+ *                     role:
  *                       type: string
- *                       format: date-time
- *                       example: "2026-03-30T12:34:56Z"
+ *                       example: "USER"
  *       400:
  *         description: Champs obligatoires manquants
  *         content:
