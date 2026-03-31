@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ---------------------------------------------------------
 -- DROP TABLE - CLEAN DB
 ---------------------------------------------------------
+DROP TABLE IF EXISTS user_action_log;
 DROP TABLE IF EXISTS consent_log;
 DROP TABLE IF EXISTS registrations;
 DROP TABLE IF EXISTS events;
@@ -54,7 +55,7 @@ CREATE TABLE events (
     id_orga INTEGER,
     is_published BOOLEAN,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_orga) REFERENCES users(id_user)
+    FOREIGN KEY (id_orga) REFERENCES users(id_user) ON DELETE CASCADE
 );
 
 INSERT INTO events
@@ -81,8 +82,8 @@ CREATE TABLE registrations (
     id_event INTEGER,
     registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status registration_status NOT NULL DEFAULT 'pending',
-    FOREIGN KEY (id_user) REFERENCES users(id_user),
-    FOREIGN KEY (id_event) REFERENCES events(id_event)
+    FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_event) REFERENCES events(id_event) ON DELETE CASCADE
 );
 
 INSERT INTO registrations
@@ -110,7 +111,7 @@ CREATE TABLE consent_log (
     datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ipAddress VARCHAR,
     details VARCHAR,
-    FOREIGN KEY (id_user) REFERENCES users(id_user)
+    FOREIGN KEY (id_user) REFERENCES users(id_user) ON DELETE CASCADE
 );
 
 INSERT INTO consent_log
@@ -127,3 +128,104 @@ VALUES
 (9, 'consent_given', NOW(), crypt('192.168.0.9', gen_salt('bf')), 'Nouvelle version politique'),
 (10, 'data_accessed', NOW(), crypt('192.168.0.10', gen_salt('bf')), 'Changement téléphone'),
 (11, 'data_accessed', NOW(), crypt('192.168.0.11', gen_salt('bf')), 'Consultation profil');
+
+-- Type d'action possible
+CREATE TYPE action_type AS ENUM (
+    'user_registered',        -- un user s'inscrit lui-même
+    'user_registration_validated', -- un orga valide une inscription
+    'user_data_modified',     -- modification des données personnelles
+    'event_registration',     -- inscription à un événement
+    'event_registration_cancelled', -- annulation inscription
+    'notification_sent',       -- notification envoyée
+    'event_created',
+    'event_updated',
+    'event_deleted',
+    'data_deleted'
+);
+
+CREATE TABLE user_action_log (
+    id SERIAL PRIMARY KEY,
+    id_target_user INTEGER,      
+    id_actor_user INTEGER,       
+    action action_type NOT NULL,
+    related_event INTEGER,       
+    action_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    details TEXT,                
+    FOREIGN KEY (id_target_user) REFERENCES users(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_actor_user) REFERENCES users(id_user) ON DELETE CASCADE,
+	FOREIGN KEY (related_event) REFERENCES events(id_event) ON DELETE CASCADE
+);
+
+-- INSERTIONS DANS user_action_log (2 à 4 actions par user)
+-- Utilisateur 1 : Léa (ADMIN) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, details)
+VALUES
+(1, 1, 'user_registered', 'Inscription par elle-même'),
+(1, 1, 'user_data_modified', 'Mise à jour profil admin'),
+(2, 1, 'notification_sent', 'Notification envoyée à Alice pour Conférence Tech 2026');
+
+-- Utilisateur 2 : Alice (USER) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, related_event, details)
+VALUES
+(2, 2, 'user_registered', NULL, 'Inscription par elle-même'),
+(2, 3, 'user_registration_validated', 1, 'Validation par Bob pour Conférence Tech 2026'),
+(2, 2, 'event_registration', 1, 'Inscription confirmée à Conférence Tech 2026');
+
+-- Utilisateur 3 : Bob (ORGANIZER) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, details)
+VALUES
+(3, 3, 'user_registered', 'Inscription par lui-même'),
+(4, 3, 'user_registration_validated', 'Validation inscription Claire Durand'),
+(3, 3, 'notification_sent', 'Notification envoyée aux participants Hackathon IA');
+
+-- Utilisateur 4 : Claire (USER) → 2 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, related_event, details)
+VALUES
+(4, 4, 'user_registered', NULL, 'Inscription par elle-même'),
+(4, 3, 'user_registration_validated', 1, 'Validation par Bob pour Conférence Tech 2026');
+
+-- Utilisateur 5 : David (USER) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, related_event, details)
+VALUES
+(5, 5, 'user_registered', NULL, 'Inscription par lui-même'),
+(5, 5, 'event_registration', 2, 'Inscription confirmée Atelier Symfony'),
+(5, 5, 'user_data_modified', NULL, 'Modification email');
+
+-- Utilisateur 6 : Emma (ORGANIZER) → 2 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, details)
+VALUES
+(6, 6, 'user_registered', 'Inscription par elle-même'),
+(5, 6, 'user_registration_validated', 'Validation inscription David pour Atelier Symfony');
+
+-- Utilisateur 7 : François (USER) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, related_event, details)
+VALUES
+(7, 7, 'user_registered', NULL, 'Inscription par lui-même'),
+(7, 3, 'user_registration_validated', 3, 'Validation par Bob Hackathon IA'),
+(7, 7, 'event_registration', 9, 'Inscription Bootcamp Backend');
+
+-- Utilisateur 8 : Julie (USER) → 2 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, related_event, details)
+VALUES
+(8, 8, 'user_registered', NULL, 'Inscription par elle-même'),
+(8, 9, 'user_registration_validated', 4, 'Validation par Luc Meetup Dev');
+
+-- Utilisateur 9 : Luc (ORGANIZER) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, details)
+VALUES
+(9, 9, 'user_registered', 'Inscription par lui-même'),
+(10, 9, 'user_registration_validated', 'Validation Marie pour Formation Vue.js'),
+(9, 9, 'notification_sent', 'Notification envoyée pour Hackathon IA');
+
+-- Utilisateur 10 : Marie (USER) → 3 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, related_event, details)
+VALUES
+(10, 10, 'user_registered', NULL, 'Inscription par elle-même'),
+(10, 9, 'user_registration_validated', 5, 'Validation par Luc Formation Vue.js'),
+(10, 10, 'event_registration', 5, 'Inscription confirmée Formation Vue.js');
+
+-- Utilisateur 11 : Paul (ORGANIZER) → 2 actions
+INSERT INTO user_action_log (id_target_user, id_actor_user, action, details)
+VALUES
+(11, 11, 'user_registered', 'Inscription par lui-même'),
+(2, 11, 'user_registration_validated', 'Validation Alice pour Conférence Cybersécurité');
