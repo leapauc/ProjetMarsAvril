@@ -106,6 +106,7 @@ router.get("/", getAllEvents);
  *                   type: string
  *                 max_participants:
  *                   type: integer
+ *                   example: 15
  *                 id_orga:
  *                   type: integer
  *                 is_published:
@@ -113,6 +114,9 @@ router.get("/", getAllEvents);
  *                 created_at:
  *                   type: string
  *                   format: date-time
+ *                 remaining_spots:
+ *                   type: integer
+ *                   example: 5
  *       404:
  *         description: Événement non trouvé
  *         content:
