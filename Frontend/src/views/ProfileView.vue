@@ -233,11 +233,7 @@
               votre email hashé, votre téléphone effacé. Cette action est
               <strong>définitive et irréversible</strong>.
             </p>
-            <div
-              v-if="anonError"
-              class="alert alert-error"
-              style="margin-top: 12px"
-            >
+            <div v-if="anonError" class="alert alert-error">
               {{ anonError }}
             </div>
             <div class="modal-actions">

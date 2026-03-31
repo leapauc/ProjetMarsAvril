@@ -1,7 +1,6 @@
 <template>
   <div class="page">
     <div class="container detail-wrap">
-
       <div v-if="loading" class="loader-wrap"><div class="loader" /></div>
 
       <template v-else-if="event">
@@ -9,19 +8,22 @@
         <button class="back-btn" @click="router.back()">← Retour</button>
 
         <div class="detail-layout">
-
           <!-- Main -->
           <div class="detail-main">
             <div class="detail-meta-top">
-              <span class="badge badge-ok">{{ event.is_published ? 'Publié' : 'Brouillon' }}</span>
+              <span class="badge badge-ok">{{
+                event.is_published ? "Publié" : "Brouillon"
+              }}</span>
               <span class="meta-date">📅 {{ formattedDate }}</span>
             </div>
 
             <h1 class="detail-title anim-up">{{ event.title }}</h1>
 
             <div class="detail-meta anim-up d1">
-              <div class="meta-pill">📍 {{ event.location || '—' }}</div>
-              <div class="meta-pill">👥 {{ event.max_participants }} places max</div>
+              <div class="meta-pill">📍 {{ event.location || "—" }}</div>
+              <div class="meta-pill">
+                👥 {{ event.remaining_spots }} places disponibles
+              </div>
             </div>
 
             <div class="detail-desc anim-up d2" v-if="event.description">
@@ -39,7 +41,10 @@
               </div>
               <div class="aside-info">
                 <p class="aside-loc">📍 {{ event.location }}</p>
-                <p class="aside-places">👥 {{ event.max_participants }} places disponibles</p>
+                <p class="aside-places">
+                  👥 {{ event.remaining_spots }} /
+                  {{ event.max_participants }} places disponibles
+                </p>
               </div>
 
               <div class="divider" />
@@ -47,42 +52,79 @@
               <!-- Non connecté -->
               <template v-if="!auth.isAuthenticated">
                 <p class="aside-hint">Connectez-vous pour vous inscrire.</p>
-                <RouterLink to="/login" class="btn btn-primary btn-block">Se connecter</RouterLink>
+                <RouterLink to="/login" class="btn btn-primary btn-block"
+                  >Se connecter</RouterLink
+                >
               </template>
 
               <!-- Déjà inscrit -->
               <template v-else-if="registration">
-                <div :class="['badge', statusBadge]" style="justify-content:center;padding:10px">
+                <div
+                  :class="['badge', statusBadge]"
+                  style="justify-content: center; padding: 10px"
+                >
                   {{ statusLabel }}
                 </div>
-                <button class="btn btn-danger btn-block" @click="cancelReg" :disabled="cancelling">
-                  {{ cancelling ? 'Annulation…' : "Annuler l'inscription" }}
+                <button
+                  class="btn btn-danger btn-block"
+                  @click="cancelReg"
+                  :disabled="cancelling"
+                >
+                  {{ cancelling ? "Annulation…" : "Annuler l'inscription" }}
                 </button>
               </template>
 
               <!-- S'inscrire -->
               <template v-else>
-                <button class="btn btn-primary btn-block" @click="register" :disabled="registering">
-                  {{ registering ? 'Inscription…' : "S'inscrire à l'événement" }}
+                <button
+                  class="btn btn-primary btn-block"
+                  @click="register"
+                  :disabled="registering || event.remaining_spots === 0"
+                >
+                  {{
+                    registering
+                      ? "Inscription…"
+                      : event.remaining_spots === 0
+                        ? "Complet"
+                        : "S'inscrire à l'événement"
+                  }}
                 </button>
               </template>
 
-              <div v-if="regError"   class="alert alert-error"   style="margin-top:12px">{{ regError }}</div>
-              <div v-if="regSuccess" class="alert alert-success" style="margin-top:12px">{{ regSuccess }}</div>
+              <div
+                v-if="regError"
+                class="alert alert-error"
+                style="margin-top: 12px"
+              >
+                {{ regError }}
+              </div>
+              <div
+                v-if="regSuccess"
+                class="alert alert-success"
+                style="margin-top: 12px"
+              >
+                {{ regSuccess }}
+              </div>
             </div>
 
             <!-- Organiser actions -->
             <div v-if="isOwner" class="aside-card card">
               <p class="aside-owner-label">Vous organisez cet événement</p>
-              <RouterLink :to="`/events/${event.id_event}/edit`" class="btn btn-secondary btn-block">
+              <RouterLink
+                :to="`/events/${event.id_event}/edit`"
+                class="btn btn-secondary btn-block"
+              >
                 ✏️ Modifier
               </RouterLink>
-              <button class="btn btn-danger btn-block" style="margin-top:8px" @click="deleteEvent">
+              <button
+                class="btn btn-danger btn-block"
+                style="margin-top: 8px"
+                @click="deleteEvent"
+              >
                 🗑️ Supprimer
               </button>
             </div>
           </aside>
-
         </div>
       </template>
 
@@ -91,114 +133,142 @@
         <h3>Événement introuvable</h3>
         <p>Cet événement n'existe pas ou a été supprimé.</p>
       </div>
-
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import api from '../api/axios'
+import { ref, computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import api from "../api/axios";
 
-const route  = useRoute()
-const router = useRouter()
-const auth   = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const auth = useAuthStore();
 
-const event      = ref(null)
-const loading    = ref(true)
-const registration = ref(null)
-const registering  = ref(false)
-const cancelling   = ref(false)
-const regError     = ref('')
-const regSuccess   = ref('')
+const event = ref(null);
+const loading = ref(true);
+const registration = ref(null);
+const registering = ref(false);
+const cancelling = ref(false);
+const regError = ref("");
+const regSuccess = ref("");
 
-const isOwner = computed(() =>
-  auth.isOrganizer && event.value?.id_orga === auth.user?.id_user
-)
+const isOwner = computed(
+  () => auth.isOrganizer && event.value?.id_orga === auth.user?.id_user,
+);
 
 const formattedDate = computed(() => {
-  if (!event.value?.event_date) return '—'
-  return new Date(event.value.event_date).toLocaleDateString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  })
-})
-const day   = computed(() => event.value ? new Date(event.value.event_date).getDate() : '')
-const month = computed(() => event.value
-  ? new Date(event.value.event_date).toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase() : '')
+  if (!event.value?.event_date) return "—";
+  return new Date(event.value.event_date).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+});
+const day = computed(() =>
+  event.value ? new Date(event.value.event_date).getDate() : "",
+);
+const month = computed(() =>
+  event.value
+    ? new Date(event.value.event_date)
+        .toLocaleDateString("fr-FR", { month: "short" })
+        .toUpperCase()
+    : "",
+);
 
-const statusBadge = computed(() => ({
-  confirmed: 'badge-ok', pending: 'badge-warn', cancelled: 'badge-err'
-}[registration.value?.status] || 'badge-muted'))
+const statusBadge = computed(
+  () =>
+    ({
+      confirmed: "badge-ok",
+      pending: "badge-warn",
+      cancelled: "badge-err",
+    })[registration.value?.status] || "badge-muted",
+);
 
-const statusLabel = computed(() => ({
-  confirmed: '✅ Inscription confirmée',
-  pending:   '⏳ En attente de confirmation',
-  cancelled: '❌ Inscription annulée'
-}[registration.value?.status] || registration.value?.status))
+const statusLabel = computed(
+  () =>
+    ({
+      confirmed: "✅ Inscription confirmée",
+      pending: "⏳ En attente de confirmation",
+      cancelled: "❌ Inscription annulée",
+    })[registration.value?.status] || registration.value?.status,
+);
 
 onMounted(async () => {
   try {
-    const { data } = await api.get(`/event/${route.params.id}`)
-    event.value = data
+    const { data } = await api.get(`/event/${route.params.id}`);
+    event.value = data;
     // Cherche une inscription existante
     if (auth.isAuthenticated) {
       try {
-        const regs = await api.get(`/registrations/${auth.user.id_user}`)
-        registration.value = regs.data.find(r => r.id_event === data.id_event) || null
-      } catch { /* pas d'inscription */ }
+        const regs = await api.get(`/registrations/${auth.user.id_user}`);
+        registration.value =
+          regs.data.find((r) => r.id_event === data.id_event) || null;
+      } catch {
+        /* pas d'inscription */
+      }
     }
   } catch (e) {
-    console.error(e)
+    console.error(e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 
 async function register() {
-  regError.value = regSuccess.value = ''
-  registering.value = true
+  regError.value = regSuccess.value = "";
+  registering.value = true;
   try {
-    const { data } = await api.post(`/registrations/${event.value.id_event}/register`, {
-      id_user: auth.user.id_user
-    })
-    registration.value = data.registration
-    regSuccess.value = 'Inscription réussie !'
+    const { data } = await api.post(
+      `/registrations/${event.value.id_event}/register`,
+      {
+        id_user: auth.user.id_user,
+      },
+    );
+    registration.value = data.registration;
+    regSuccess.value = "Inscription réussie !";
   } catch (e) {
-    regError.value = e.response?.data?.message || 'Erreur lors de l\'inscription'
+    regError.value =
+      e.response?.data?.message || "Erreur lors de l'inscription";
   } finally {
-    registering.value = false
+    registering.value = false;
   }
 }
 
 async function cancelReg() {
-  if (!registration.value) return
-  cancelling.value = true
+  if (!registration.value) return;
+  cancelling.value = true;
   try {
-    await api.delete(`/registrations/${registration.value.id}`)
-    registration.value = null
-    regSuccess.value = 'Inscription annulée.'
+    await api.delete(`/registrations/${registration.value.id}`);
+    registration.value = null;
+    regSuccess.value = "Inscription annulée.";
   } catch (e) {
-    regError.value = e.response?.data?.message || 'Erreur'
+    regError.value = e.response?.data?.message || "Erreur";
   } finally {
-    cancelling.value = false
+    cancelling.value = false;
   }
 }
 
 async function deleteEvent() {
-  if (!confirm('Supprimer cet événement définitivement ?')) return
+  if (!confirm("Supprimer cet événement définitivement ?")) return;
   try {
-    await api.delete(`/event/${event.value.id_event}`)
-    router.push('/events')
+    await api.delete(`/event/${event.value.id_event}`);
+    router.push("/events");
   } catch (e) {
-    alert(e.response?.data?.message || 'Erreur lors de la suppression')
+    alert(e.response?.data?.message || "Erreur lors de la suppression");
   }
 }
 </script>
 
 <style scoped>
-.detail-wrap { max-width: 1100px; }
+.detail-wrap {
+  max-width: 1100px;
+}
 
 .back-btn {
   background: none;
@@ -209,7 +279,9 @@ async function deleteEvent() {
   margin-bottom: 32px;
   transition: color var(--t-fast);
 }
-.back-btn:hover { color: var(--c-text); }
+.back-btn:hover {
+  color: var(--c-text);
+}
 
 .detail-layout {
   display: grid;
@@ -225,14 +297,21 @@ async function deleteEvent() {
   margin-bottom: 16px;
   font-size: 13px;
 }
-.meta-date { color: var(--c-text-2); }
+.meta-date {
+  color: var(--c-text-2);
+}
 
 .detail-title {
   font-size: clamp(28px, 4vw, 48px);
   margin-bottom: 20px;
 }
 
-.detail-meta  { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+.detail-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
 .meta-pill {
   padding: 8px 16px;
   background: var(--c-card);
@@ -242,24 +321,80 @@ async function deleteEvent() {
   color: var(--c-text-2);
 }
 
-.detail-section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--c-text-2); text-transform: uppercase; letter-spacing: .05em; }
-.detail-desc p { font-size: 16px; line-height: 1.8; color: var(--c-text-2); }
+.detail-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--c-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.detail-desc p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--c-text-2);
+}
 
-.aside-card { padding: 24px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+.aside-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
 
-.aside-date { text-align: center; }
-.aside-day   { display: block; font-size: 52px; font-weight: 800; line-height: 1; background: var(--grad-brand); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.aside-month { display: block; font-size: 16px; font-weight: 600; color: var(--c-text-2); text-transform: uppercase; letter-spacing: .1em; }
+.aside-date {
+  text-align: center;
+}
+.aside-day {
+  display: block;
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1;
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.aside-month {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
 
-.aside-info { display: flex; flex-direction: column; gap: 6px; }
-.aside-loc, .aside-places { font-size: 14px; color: var(--c-text-2); }
+.aside-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aside-loc,
+.aside-places {
+  font-size: 14px;
+  color: var(--c-text-2);
+}
 
-.aside-hint { font-size: 13px; color: var(--c-text-2); text-align: center; }
+.aside-hint {
+  font-size: 13px;
+  color: var(--c-text-2);
+  text-align: center;
+}
 
-.aside-owner-label { font-size: 13px; font-weight: 600; color: var(--c-primary); text-align: center; }
+.aside-owner-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-primary);
+  text-align: center;
+}
 
 @media (max-width: 768px) {
-  .detail-layout { grid-template-columns: 1fr; }
-  .detail-aside { order: -1; }
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+  .detail-aside {
+    order: -1;
+  }
 }
 </style>
