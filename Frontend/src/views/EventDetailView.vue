@@ -41,10 +41,14 @@
               </div>
               <div class="aside-info">
                 <p class="aside-loc">📍 {{ event.location }}</p>
-                <p class="aside-places">
-                  👥 {{ event.remaining_spots }} /
-                  {{ event.max_participants }} places disponibles
-                </p>
+                <div class="aside-places-wrap">
+                  <span class="meta-pill">
+                    👥 {{ event.remaining_spots }} restantes
+                  </span>
+                  <span class="meta-pill meta-pill-total">
+                    {{ event.max_participants }} places maximum
+                  </span>
+                </div>
               </div>
 
               <div class="divider" />
@@ -387,6 +391,28 @@ async function deleteEvent() {
   font-weight: 600;
   color: var(--c-primary);
   text-align: center;
+}
+
+.aside-places-wrap {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.meta-pill {
+  padding: 6px 12px;
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-full);
+  font-size: 14px;
+  color: var(--c-text-2);
+}
+
+.meta-pill-total {
+  background: var(--c-bg-muted);
+  color: var(--c-text-2);
+  border-color: var(--c-border);
 }
 
 @media (max-width: 768px) {
