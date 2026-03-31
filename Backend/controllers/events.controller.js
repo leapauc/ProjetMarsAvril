@@ -125,7 +125,7 @@ exports.updateEvent = async (req, res) => {
 exports.deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { id_orga } = req.body;
+    // const { id_orga } = req.body;
 
     // Vérifier que l'événement existe
     const eventQuery = await pool.query(
@@ -136,12 +136,12 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ message: "Événement non trouvé" });
     }
 
-    // Vérifier que l'utilisateur est l'organisateur
-    if (eventQuery.rows[0].id_orga !== id_orga) {
-      return res
-        .status(403)
-        .json({ message: "Vous n’êtes pas l’organisateur de cet événement" });
-    }
+    // // Vérifier que l'utilisateur est l'organisateur
+    // if (eventQuery.rows[0].id_orga !== id_orga) {
+    //   return res
+    //     .status(403)
+    //     .json({ message: "Vous n’êtes pas l’organisateur de cet événement" });
+    // }
 
     await pool.query("DELETE FROM events WHERE id_event = $1", [id]);
 

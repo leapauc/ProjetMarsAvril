@@ -27,6 +27,33 @@ exports.getRegistrationById = async (req, res) => {
   }
 };
 
+// GET /orga/:id/event -> récupérer les inscriptions d'un organisateur à ces différents évents
+exports.getRegistrationOfEventByOrga = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT 
+          r.id AS registration_id,r.status,r.registered_at,
+          e.id_event,e.title,e.event_date,
+          u.id_user,u.firstname,u.lastname,u.email
+      FROM registrations r
+      JOIN events e ON r.id_event = e.id_event
+      JOIN users u ON r.id_user = u.id_user
+      WHERE e.id_orga = $1
+      ORDER BY e.event_date DESC;
+      `,
+      [id],
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
 // POST /:id/register -> s’inscrire à un événement
 exports.registerToEvent = async (req, res) => {
   try {
@@ -90,12 +117,12 @@ exports.registerToEvent = async (req, res) => {
 exports.unregisterFromEvent = async (req, res) => {
   try {
     const id_registration = req.params.id;
-    const { id_user } = req.body; // utilisateur qui annule
+    //const { id_user } = req.body; // utilisateur qui annule
 
     // Vérifier que l'inscription existe
     const regQuery = await pool.query(
-      "SELECT * FROM registrations WHERE id=$1 AND id_user=$2",
-      [id_registration, id_user],
+      "SELECT * FROM registrations WHERE id=$1", // AND id_user=$2",
+      [id_registration], //, id_user],
     );
     if (regQuery.rows.length === 0) {
       return res

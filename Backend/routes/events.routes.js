@@ -13,6 +13,10 @@ const {
  *     description: Gestion des événements
  */
 const router = express.Router();
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../middlewares/auth.middleware");
 
 /**
  * @swagger
@@ -177,7 +181,7 @@ router.get("/:id", getEventById);
  *       500:
  *         description: Erreur serveur
  */
-router.post("/", createEvent);
+router.post("/", authenticateToken, authorizeRoles("ORGANIZER"), createEvent);
 
 /**
  * @swagger
@@ -234,7 +238,7 @@ router.post("/", createEvent);
  *       500:
  *         description: Erreur serveur
  */
-router.put("/:id", updateEvent);
+router.put("/:id", authenticateToken, authorizeRoles("ORGANIZER"), updateEvent);
 
 /**
  * @swagger
@@ -277,6 +281,11 @@ router.put("/:id", updateEvent);
  *       500:
  *         description: Erreur serveur
  */
-router.delete("/:id", deleteEvent);
+router.delete(
+  "/:id",
+  authenticateToken,
+  authorizeRoles("ORGANIZER", "ADMIN"),
+  deleteEvent,
+);
 
 module.exports = router;

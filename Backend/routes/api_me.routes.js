@@ -13,6 +13,24 @@ const {
  *     description: Gestion des données personnelles d'un utilisateur (RGPD)
  */
 const router = express.Router();
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../middlewares/auth.middleware");
+
+router.get(
+  "/:id/export/pdf",
+  authenticateToken,
+  authorizeRoles("USER", "ORGANIZER"),
+  exportMyDataPDF,
+);
+
+router.get(
+  "/:id/export",
+  authenticateToken,
+  authorizeRoles("USER", "ORGANIZER"),
+  exportMyData,
+);
 
 /**
  * @swagger
@@ -79,7 +97,7 @@ const router = express.Router();
  *       500:
  *         description: Erreur serveur
  */
-router.get("/:id", getMyData);
+router.get("/:id", authenticateToken, getMyData);
 
 /**
  * @swagger
@@ -149,7 +167,7 @@ router.get("/:id", getMyData);
  *       500:
  *         description: Erreur serveur
  */
-router.put("/:id", updateMyData);
+router.put("/:id", authenticateToken, updateMyData);
 
 /**
  * @swagger
@@ -189,9 +207,6 @@ router.put("/:id", updateMyData);
  *       500:
  *         description: Erreur serveur
  */
-router.delete("/:id", deleteMyData);
-
-router.get("/:id/export", exportMyData);
-router.get("/:id/export/pdf", exportMyDataPDF);
+router.delete("/:id", authenticateToken, deleteMyData);
 
 module.exports = router;

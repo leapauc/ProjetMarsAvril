@@ -1,8 +1,23 @@
 require("dotenv").config();
-const pool = require("../db"); // instance pg Pool
+const pool = require("../db");
 const jwt = require("jsonwebtoken");
 
-// POST /api/auth/register -> enregistrement d'un utilisateur
+// Fonction utilitaire pour générer un token
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id_user,
+      email: user.email,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+    },
+  );
+};
+
+// POST /api/auth/register
 exports.registerUser = async (req, res) => {
   try {
     const {
@@ -15,7 +30,7 @@ exports.registerUser = async (req, res) => {
       consentVersion,
     } = req.body;
 
-    // Vérification champs obligatoires
+    // Validation
     if (!email || !password || !firstname || !lastname || !consentVersion) {
       return res.status(400).json({
         message: "Champs obligatoires manquants",
@@ -23,9 +38,10 @@ exports.registerUser = async (req, res) => {
     }
 
     // Vérifier email unique
-    const existing = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const existing = await pool.query(
+      "SELECT id_user FROM users WHERE email = $1",
+      [email],
+    );
 
     if (existing.rows.length > 0) {
       return res.status(400).json({
@@ -33,7 +49,7 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    // Insertion avec hash directement en SQL (pgcrypto)
+    // Insert user
     const result = await pool.query(
       `
       INSERT INTO users
@@ -77,8 +93,12 @@ exports.registerUser = async (req, res) => {
       ],
     );
 
+    // Générer token après inscription
+    const token = generateToken(user);
+
     res.status(201).json({
       message: "Utilisateur créé",
+      token,
       user,
     });
   } catch (error) {
@@ -89,22 +109,22 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-// POST /api/auth/login -> authentification d'un utilisateur
+// POST /api/auth/login
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Vérification des champs
+    // Validation
     if (!email || !password) {
       return res.status(400).json({
         message: "Email et mot de passe requis",
       });
     }
 
-    // Vérifier email + mot de passe directement sur users
+    // Vérification credentials
     const result = await pool.query(
       `
-      SELECT id_user, email, firstname, lastname, role, created_at
+      SELECT id_user, email, firstname, lastname, role
       FROM users
       WHERE email = $1
         AND password = crypt($2, password)
@@ -120,9 +140,13 @@ exports.loginUser = async (req, res) => {
 
     const user = result.rows[0];
 
+    // Génération token
+    const token = generateToken(user);
+
     res.status(200).json({
       message: "Connexion réussie",
-      user, // on renvoie user au lieu de praticien
+      token,
+      user,
     });
   } catch (error) {
     console.error(error);

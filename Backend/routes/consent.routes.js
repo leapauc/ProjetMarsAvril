@@ -7,6 +7,12 @@ const { postConsent } = require("../controllers/consent.controller");
  *     description: Gestion du consentement des utilisateurs
  */
 const router = express.Router();
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../middlewares/auth.middleware");
+
+router.use(authenticateToken, authorizeRoles("USER", "ORGANIZER"));
 
 /**
  * @swagger

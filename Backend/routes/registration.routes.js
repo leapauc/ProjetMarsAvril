@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   getRegistrationById,
+  getRegistrationOfEventByOrga,
   registerToEvent,
   unregisterFromEvent,
 } = require("../controllers/registration.controller");
@@ -11,6 +12,83 @@ const {
  *     description: Gestion des inscriptions aux événements
  */
 const router = express.Router();
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../middlewares/auth.middleware");
+
+router.use(authenticateToken, authorizeRoles("USER", "ORGANIZER"));
+
+/**
+ * @swagger
+ * /registration/orga/{id}/event:
+ *   get:
+ *     summary: Récupère toutes les inscriptions aux événements d'un organisateur
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'organisateur
+ *         example: 3
+ *     responses:
+ *       200:
+ *         description: Liste des inscriptions des événements de l'organisateur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   registration_id:
+ *                     type: integer
+ *                     example: 1
+ *                   status:
+ *                     type: string
+ *                     example: confirmed
+ *                   registered_at:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2026-03-30T10:00:00Z"
+ *                   id_event:
+ *                     type: integer
+ *                     example: 1
+ *                   title:
+ *                     type: string
+ *                     example: "Conférence Tech 2026"
+ *                   event_date:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2026-06-15T10:00:00Z"
+ *                   id_user:
+ *                     type: integer
+ *                     example: 2
+ *                   firstname:
+ *                     type: string
+ *                     example: "Alice"
+ *                   lastname:
+ *                     type: string
+ *                     example: "Dupont"
+ *                   email:
+ *                     type: string
+ *                     example: "alice.dupont@email.com"
+ *       404:
+ *         description: Aucune inscription trouvée pour cet organisateur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Aucune inscription trouvée"
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get("/orga/:id/event", getRegistrationOfEventByOrga);
 
 /**
  * @swagger

@@ -13,6 +13,11 @@ const {
  *     description: Gestion des utilisateurs
  */
 const router = express.Router();
+const {
+  authenticateToken,
+  authorizeRoles,
+} = require("../middlewares/auth.middleware");
+router.use(authenticateToken, authorizeRoles("ADMIN"));
 
 /**
  * @swagger
