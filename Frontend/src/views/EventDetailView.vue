@@ -75,7 +75,7 @@
               </template>
 
               <!-- S'inscrire -->
-              <template v-else>
+              <template v-else-if="!isOwner">
                 <button
                   class="btn btn-primary btn-block"
                   @click="register"
