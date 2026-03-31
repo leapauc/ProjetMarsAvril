@@ -1,0 +1,164 @@
+### GET all users - no token (401)
+GET http://localhost:3000/api/user
+Accept: application/json
+
+###
+
+### GET all users - USER token (403)
+GET http://localhost:3000/api/user
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+###
+
+### GET all users - ADMIN token (200)
+GET http://localhost:3000/api/user
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### POST create user - ADMIN token (201)
+POST http://localhost:3000/api/user
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "testuser1@mail.com",
+  "password": "Password123",
+  "firstname": "Test",
+  "lastname": "User",
+  "phone": "0601020304",
+  "role": "USER",
+  "consentVersion": "1.0"
+}
+
+###
+
+### POST create user - duplicate email (400)
+POST http://localhost:3000/api/user
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "testuser1@mail.com",
+  "password": "Password123",
+  "firstname": "Test",
+  "lastname": "User"
+}
+
+###
+
+### GET user by id - ADMIN token (200)
+GET http://localhost:3000/api/user/{{createdUserId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### GET user by id - not found (404)
+GET http://localhost:3000/api/user/999999
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### PUT user by id - ADMIN token (200)
+PUT http://localhost:3000/api/user/{{createdUserId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "Updated",
+  "lastname": "User",
+  "phone": "0708091011",
+  "role": "ADMIN"
+}
+
+###
+
+### PUT user by id - not found (404)
+PUT http://localhost:3000/api/user/999999
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "X"
+}
+
+###
+
+### DELETE user by id - ADMIN token (200)
+DELETE http://localhost:3000/api/user/{{createdUserId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### DELETE user by id - not found (404)
+DELETE http://localhost:3000/api/user/999999
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### GET user registrations - no token (401)
+GET http://localhost:3000/api/registrations/1
+Accept: application/json
+
+###
+
+### GET user registrations - USER token (200)
+GET http://localhost:3000/api/registrations/1
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+###
+
+### GET user registrations - non trouvé (404)
+GET http://localhost:3000/api/registrations/999999
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+###
+
+### GET organizer registrations - ORGA token (200)
+GET http://localhost:3000/api/registrations/orga/3/event
+Authorization: Bearer {{orgaToken}}
+Accept: application/json
+
+###
+
+### POST register for event - USER token (201 ou 400 si déjà inscrit)
+POST http://localhost:3000/api/registrations/{{testEventId}}/register
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "id_user": 1
+}
+
+###
+
+### POST register for non-existent event - 404
+POST http://localhost:3000/api/registrations/999999/register
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "id_user": 1
+}
+
+###
+
+### DELETE registration - USER token (200)
+DELETE http://localhost:3000/api/registrations/{{registrationId}}
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+###
+
+### DELETE non-existent registration - 404
+DELETE http://localhost:3000/api/registrations/999999
+Authorization: Bearer {{userToken}}
+Accept: application/json

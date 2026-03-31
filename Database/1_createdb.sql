@@ -141,7 +141,9 @@ CREATE TYPE action_type AS ENUM (
     'event_updated',
     'event_deleted',
     'data_deleted',
-    'data_viewed'
+    'data_viewed',
+    'data_exported_pdf',
+    'data_exported'
 );
 
 CREATE TABLE user_action_log (
