@@ -1,4 +1,5 @@
 <template>
+  <div>
   <div class="page">
     <div class="container">
       <!-- Header -->
@@ -30,6 +31,15 @@
         >
           {{ auth.isOrganizer ? "🗂 Mes événements" : "📋 Mes inscriptions" }}
           <span class="tab-count" v-if="items.length">{{ items.length }}</span>
+        </button>
+        <button
+          v-if="auth.isOrganizer"
+          class="tab-btn"
+          :class="{ active: tab === 'validations' }"
+          @click="tab = 'validations'"
+        >
+          ✅ Validations
+          <span class="tab-count tab-count-warn" v-if="pendingCount">{{ pendingCount }}</span>
         </button>
         <button
           class="tab-btn"
@@ -102,7 +112,7 @@
               class="btn btn-secondary btn-sm"
               >Modifier</RouterLink
             >
-            <button class="btn btn-danger btn-sm" @click="deleteEvent(ev)">
+            <button class="btn btn-danger btn-sm" @click="openDeleteModal(ev)">
               Supprimer
             </button>
           </div>
@@ -137,11 +147,40 @@
             >
             <button
               class="btn btn-danger btn-sm"
-              @click="cancelReg(reg)"
+              @click="openCancelModal(reg)"
               :disabled="reg.status === 'cancelled'"
             >
               Annuler
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ORGANIZER : validations inscriptions -->
+      <div v-if="auth.isOrganizer && tab === 'validations'" class="items-list anim-up d2">
+        <div v-if="!validations.length" class="empty-state">
+          <div class="empty-icon">✅</div>
+          <h3>Aucune inscription</h3>
+          <p>Les inscriptions à vos événements apparaîtront ici.</p>
+        </div>
+        <div
+          v-for="(reg, i) in validations"
+          :key="reg.registration_id"
+          class="item-card card anim-up"
+          :class="`d${Math.min(i + 2, 6)}`"
+        >
+          <div class="item-info">
+            <div class="item-top">
+              <span class="badge" :class="statusClass(reg.status)">{{ statusLabel(reg.status) }}</span>
+              <span class="item-date">{{ formatDate(reg.event_date) }}</span>
+            </div>
+            <h3 class="item-title">{{ reg.title }}</h3>
+            <p class="item-meta">👤 {{ reg.firstname }} {{ reg.lastname }} · {{ reg.email }}</p>
+            <p class="item-meta">Inscrit le {{ formatDate(reg.registered_at) }}</p>
+          </div>
+          <div class="item-actions" v-if="reg.status === 'pending'">
+            <button class="btn btn-ok btn-sm" @click="openValidateModal(reg)">✔ Valider</button>
+            <button class="btn btn-danger btn-sm" @click="openRefuseModal(reg)">✘ Refuser</button>
           </div>
         </div>
       </div>
@@ -165,6 +204,32 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal de confirmation -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="modal.show" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-box card">
+          <h3 class="modal-title">{{ modal.title }}</h3>
+          <p class="modal-msg">{{ modal.message }}</p>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="closeModal">Annuler</button>
+            <button class="btn" :class="modal.btnClass" @click="confirmModal">{{ modal.btnLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Toast notification -->
+  <Teleport to="body">
+    <Transition name="toast">
+      <div v-if="toast.show" class="toast" :class="`toast-${toast.type}`">
+        {{ toast.message }}
+      </div>
+    </Transition>
+  </Teleport>
+</div>
 </template>
 
 <script setup>
@@ -174,8 +239,26 @@ import api from "../api/axios";
 
 const auth = useAuthStore();
 const items = ref([]);
+const validations = ref([]);
 const loading = ref(true);
 const tab = ref("events");
+
+// ── Modal & Toast ──────────────────────────────────────────────────────────
+const modal = ref({ show: false, title: "", message: "", btnLabel: "Confirmer", btnClass: "btn-danger", pending: null });
+const toast = ref({ show: false, message: "", type: "success" });
+
+function showToast(message, type = "success") {
+  toast.value = { show: true, message, type };
+  setTimeout(() => { toast.value.show = false; }, 3000);
+}
+function closeModal() { modal.value.show = false; }
+function confirmModal() {
+  if (modal.value.pending) modal.value.pending();
+  closeModal();
+}
+
+// ── Computed ────────────────────────────────────────────────────────────────
+const pendingCount = computed(() => validations.value.filter((r) => r.status === "pending").length);
 
 const initials = computed(() => {
   const u = auth.user;
@@ -198,6 +281,7 @@ const joinDate = computed(() =>
     : "",
 );
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
 function formatDate(d) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("fr-FR", {
@@ -208,23 +292,25 @@ function formatDate(d) {
 }
 function statusClass(s) {
   return (
-    { confirmed: "badge-ok", pending: "badge-warn", cancelled: "badge-err" }[
-      s
-    ] || "badge-muted"
+    { confirmed: "badge-ok", pending: "badge-warn", cancelled: "badge-err" }[s] || "badge-muted"
   );
 }
 function statusLabel(s) {
   return (
-    { confirmed: "Confirmé", pending: "En attente", cancelled: "Annulé" }[s] ||
-    s
+    { confirmed: "Confirmé", pending: "En attente", cancelled: "Refusé" }[s] || s
   );
 }
 
+// ── Data loading ────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
     if (auth.isOrganizer) {
-      const { data } = await api.get(`/me/${auth.user.id_user}`);
-      items.value = data.events || [];
+      const [eventsRes, regsRes] = await Promise.all([
+        api.get(`/me/${auth.user.id_user}`),
+        api.get(`/registrations/orga/${auth.user.id_user}/event`),
+      ]);
+      items.value = eventsRes.data.events || [];
+      validations.value = Array.isArray(regsRes.data) ? regsRes.data : [];
     } else {
       const { data } = await api.get(`/registrations/${auth.user.id_user}`);
       items.value = Array.isArray(data) ? data : [];
@@ -236,25 +322,81 @@ onMounted(async () => {
   }
 });
 
-async function deleteEvent(ev) {
-  if (!confirm(`Supprimer "${ev.title}" ?`)) return;
+// ── Modal openers ────────────────────────────────────────────────────────────
+function openDeleteModal(ev) {
+  modal.value = {
+    show: true,
+    title: "🗑 Supprimer l'événement",
+    message: `Êtes-vous sûr de vouloir supprimer "${ev.title}" ? Cette action est irréversible.`,
+    btnLabel: "Supprimer",
+    btnClass: "btn-danger",
+    pending: () => doDeleteEvent(ev),
+  };
+}
+
+function openCancelModal(reg) {
+  modal.value = {
+    show: true,
+    title: "Annuler l'inscription",
+    message: `Annuler votre inscription à "${reg.title}" ?`,
+    btnLabel: "Annuler l'inscription",
+    btnClass: "btn-danger",
+    pending: () => doCancelReg(reg),
+  };
+}
+
+function openValidateModal(reg) {
+  modal.value = {
+    show: true,
+    title: "✅ Valider l'inscription",
+    message: `Valider l'inscription de ${reg.firstname} ${reg.lastname} à "${reg.title}" ?`,
+    btnLabel: "Valider",
+    btnClass: "btn-ok",
+    pending: () => doUpdateStatus(reg, "confirmed"),
+  };
+}
+
+function openRefuseModal(reg) {
+  modal.value = {
+    show: true,
+    title: "❌ Refuser l'inscription",
+    message: `Refuser l'inscription de ${reg.firstname} ${reg.lastname} à "${reg.title}" ?`,
+    btnLabel: "Refuser",
+    btnClass: "btn-danger",
+    pending: () => doUpdateStatus(reg, "cancelled"),
+  };
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+async function doDeleteEvent(ev) {
   try {
     await api.delete(`/event/${ev.id_event}`);
     items.value = items.value.filter((e) => e.id_event !== ev.id_event);
+    showToast(`"${ev.title}" supprimé avec succès`);
   } catch (e) {
-    alert(e.response?.data?.message || "Erreur");
+    showToast(e.response?.data?.message || "Erreur lors de la suppression", "error");
   }
 }
 
-async function cancelReg(reg) {
-  if (!confirm("Annuler cette inscription ?")) return;
+async function doCancelReg(reg) {
   try {
     await api.delete(`/registrations/${reg.id}`);
     const idx = items.value.findIndex((r) => r.id === reg.id);
-    if (idx !== -1)
-      items.value[idx] = { ...items.value[idx], status: "cancelled" };
+    if (idx !== -1) items.value[idx] = { ...items.value[idx], status: "cancelled" };
+    showToast("Inscription annulée");
   } catch (e) {
-    alert(e.response?.data?.message || "Erreur");
+    showToast(e.response?.data?.message || "Erreur", "error");
+  }
+}
+
+async function doUpdateStatus(reg, status) {
+  try {
+    await api.patch(`/registrations/${reg.registration_id}/status`, { status });
+    const idx = validations.value.findIndex((r) => r.registration_id === reg.registration_id);
+    if (idx !== -1) validations.value[idx] = { ...validations.value[idx], status };
+    showToast(status === "confirmed" ? "Inscription validée ✓" : "Inscription refusée");
+  } catch (e) {
+    showToast(e.response?.data?.message || "Erreur", "error");
   }
 }
 </script>
@@ -425,5 +567,74 @@ async function cancelReg(reg) {
     flex: 1;
     justify-content: center;
   }
+}
+
+/* ── Modal ──────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal-box {
+  max-width: 440px;
+  width: 100%;
+  padding: 28px;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.modal-msg {
+  font-size: 14px;
+  color: var(--c-text-2);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Modal transition */
+.modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
+
+/* ── Toast ──────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  padding: 13px 22px;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+.toast-success { background: var(--c-ok); color: #fff; }
+.toast-error   { background: var(--c-err); color: #fff; }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
+
+/* ── Bouton valider ─────────────────────────────── */
+.btn-ok {
+  background: var(--c-ok);
+  color: #fff;
+  border-color: transparent;
+}
+.btn-ok:hover { background: #059669; }
+
+/* ── Badge pending en warning dans validations ───── */
+.tab-count-warn {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
 }
 </style>

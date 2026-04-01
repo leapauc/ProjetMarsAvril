@@ -4,6 +4,7 @@ const {
   getRegistrationOfEventByOrga,
   registerToEvent,
   unregisterFromEvent,
+  updateRegistrationStatus,
 } = require("../controllers/registration.controller");
 /**
  * @swagger
@@ -265,5 +266,40 @@ router.post("/:id/register", registerToEvent);
  *         description: Erreur serveur
  */
 router.delete("/:id", unregisterFromEvent);
+
+/**
+ * @swagger
+ * /registration/{id}/status:
+ *   patch:
+ *     summary: Valider ou refuser une inscription (organisateur)
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID de l'inscription
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [confirmed, cancelled]
+ *     responses:
+ *       200:
+ *         description: Statut mis à jour
+ *       400:
+ *         description: Statut invalide
+ *       404:
+ *         description: Inscription non trouvée
+ */
+router.patch("/:id/status", authorizeRoles("ORGANIZER", "ADMIN"), updateRegistrationStatus);
 
 module.exports = router;

@@ -11,8 +11,10 @@ const routes = [
   { path: '/login',          component: () => import('../views/LoginView.vue') },
   { path: '/register',       component: () => import('../views/RegisterView.vue') },
   { path: '/privacy',        component: () => import('../views/PrivacyView.vue') },
+  { path: '/history',        component: () => import('../views/HistoryView.vue'),   meta: { requiresAuth: true } },
   { path: '/dashboard',      component: () => import('../views/DashboardView.vue'), meta: { requiresAuth: true } },
   { path: '/profile',        component: () => import('../views/ProfileView.vue'),   meta: { requiresAuth: true } },
+  { path: '/admin',          component: () => import('../views/AdminView.vue'),     meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
@@ -26,6 +28,8 @@ router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     next('/login')
+  } else if (to.meta.requiresAdmin && !auth.isAdmin) {
+    next('/dashboard')
   } else if (to.meta.requiresOrganizer && !auth.isOrganizer) {
     next('/dashboard')
   } else {

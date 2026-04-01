@@ -15,6 +15,22 @@ exports.getAllEvents = async (req, res) => {
   }
 };
 
+// GET /event/all -> Tous les événements (admin)
+exports.getAllEventsAdmin = async (req, res) => {
+  try {
+    const eventsQuery = await pool.query(
+      `SELECT e.*, u.firstname AS orga_firstname, u.lastname AS orga_lastname
+       FROM events e
+       LEFT JOIN users u ON e.id_orga = u.id_user
+       ORDER BY e.event_date DESC`,
+    );
+    res.json(eventsQuery.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
 // GET /event/:id -> Détail d’un événement
 exports.getEventById = async (req, res) => {
   try {
