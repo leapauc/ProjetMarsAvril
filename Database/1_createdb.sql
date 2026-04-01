@@ -235,3 +235,21 @@ INSERT INTO user_action_log (id_target_user, id_actor_user, action, details)
 VALUES
 (11, 11, 'user_registered', 'Inscription par lui-même'),
 (2, 11, 'user_registration_validated', 'Validation Alice pour Conférence Cybersécurité');
+
+----------------------------------------------------------
+CREATE OR REPLACE FUNCTION cleanup_inactive_users()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  DELETE FROM users
+  WHERE COALESCE(
+      (
+        SELECT MAX(action_date)
+        FROM user_action_log
+        WHERE id_actor_user = users.id_user
+      ),
+      users.created_at
+    ) < now() - INTERVAL '2 years';
+END;
+$$;
