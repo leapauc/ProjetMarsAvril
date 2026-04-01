@@ -134,14 +134,17 @@ CREATE TYPE action_type AS ENUM (
     'user_registered',        -- un user s'inscrit lui-même
     'user_registration_validated', -- un orga valide une inscription
     'user_data_modified',     -- modification des données personnelles
+    'user_data_deleted',
     'event_registration',     -- inscription à un événement
     'event_registration_cancelled', -- annulation inscription
+    'event_registration_validated', -- validation inscription
     'notification_sent',       -- notification envoyée
     'event_created',
     'event_updated',
     'event_deleted',
-    'data_deleted',
     'data_viewed',
+    'data_updated',
+    'data_deleted',
     'data_exported_pdf',
     'data_exported'
 );

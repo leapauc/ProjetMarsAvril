@@ -165,7 +165,13 @@ exports.deleteUser = async (req, res) => {
     );
 
     // Log anonymisation
-    await logUserAction(id, id, "data_deleted", null, "Anonymisation RGPD");
+    await logUserAction(
+      id,
+      id,
+      "user_data_deleted",
+      null,
+      "Anonymisation RGPD",
+    );
 
     res.json({ message: "Utilisateur anonymisé (RGPD)" });
   } catch (err) {

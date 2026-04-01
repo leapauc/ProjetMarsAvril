@@ -26,4 +26,4 @@ app.use("/api/me", meRoutes);
 app.use("/api/consent", consentRoutes);
 app.use("/api/history", historyRoutes);
 
-module.exports = app; // <-- exporte l'app Express
+module.exports = app;

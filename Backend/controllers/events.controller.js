@@ -16,23 +16,6 @@ exports.getAllEvents = async (req, res) => {
 };
 
 // GET /event/:id -> Détail d’un événement
-// exports.getEventById = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const eventQuery = await pool.query(
-//       "SELECT * FROM events WHERE id_event = $1",
-//       [id],
-//     );
-//     if (eventQuery.rows.length === 0) {
-//       return res.status(404).json({ message: "Événement non trouvé" });
-//     }
-//     res.json(eventQuery.rows[0]);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Erreur serveur" });
-//   }
-// };
-
 exports.getEventById = async (req, res) => {
   try {
     const { id } = req.params;
