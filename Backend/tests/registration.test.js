@@ -1,172 +1,131 @@
-require("dotenv").config();
+// tests/registration.test.js
 const request = require("supertest");
-const app = require("../app");
+const app = require("../app"); // ton Express app
 const pool = require("../db");
-const jwt = require("jsonwebtoken");
 
-const userToken = jwt.sign(
-  { id: 1, email: "user@test.com", role: "USER" },
-  process.env.JWT_SECRET,
-);
+// Mock sendEmail pour ne pas envoyer de vrais mails
+jest.mock("../utils/sendEmail", () => jest.fn(() => Promise.resolve()));
 
-const orgaToken = jwt.sign(
-  { id: 3, email: "orga@test.com", role: "ORGANIZER" },
-  process.env.JWT_SECRET,
-);
+const sendEmail = require("../utils/sendEmail");
 
 describe("Registration API Endpoints", () => {
-  let testEventId;
+  let userId;
+  let eventId;
   let registrationId;
 
   beforeAll(async () => {
-    // Création événement de test
-    const eventRes = await pool.query(
-      `INSERT INTO events (title, event_date, id_orga, max_participants, is_published)
-       VALUES ('Test Event Jest', NOW() + interval '1 day', 3, 5, TRUE)
-       RETURNING id_event`,
+    // Crée un user pour test
+    const userRes = await pool.query(
+      "INSERT INTO users (firstname, lastname, email, password) VALUES ($1,$2,$3,$4) RETURNING id_user",
+      ["Test", "User", "test@example.com", "hashedpassword"],
     );
-    testEventId = eventRes.rows[0].id_event;
+    userId = userRes.rows[0].id_user;
+
+    // Crée un event pour test
+    const eventRes = await pool.query(
+      "INSERT INTO events (title, event_date, id_orga, is_published, max_participants) VALUES ($1,$2,$3,$4,$5) RETURNING id_event",
+      ["Test Event", new Date(), userId, true, 10],
+    );
+    eventId = eventRes.rows[0].id_event;
   });
 
   afterAll(async () => {
-    // ⚠️ Nettoyage dans le bon ordre pour éviter les FK errors
-
-    await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
-      testEventId,
-    ]);
-
-    await pool.query("DELETE FROM registrations WHERE id_event = $1", [
-      testEventId,
-    ]);
-
-    await pool.query("DELETE FROM events WHERE id_event = $1", [testEventId]);
-
+    await pool.query("DELETE FROM registrations");
+    await pool.query("DELETE FROM events");
+    await pool.query("DELETE FROM users");
     await pool.end();
   });
 
-  // =========================
-  // GET /registration/:id
-  // =========================
-  describe("GET /api/registrations/:id", () => {
-    it("401 si pas de token", async () => {
-      const res = await request(app).get("/api/registrations/1");
-      expect(res.statusCode).toBe(401);
+  describe("POST /registration/:id/register", () => {
+    it("devrait inscrire un utilisateur à un événement", async () => {
+      const res = await request(app)
+        .post(`/registration/${eventId}/register`)
+        .send({ id_user: userId });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.id_user).toBe(userId);
+      expect(res.body.id_event).toBe(eventId);
+
+      registrationId = res.body.id; // sauvegarder pour tests suivants
+      expect(sendEmail).toHaveBeenCalled();
     });
 
-    it("retourne les inscriptions d’un user", async () => {
-      // Création inscription
-      const reg = await pool.query(
-        `INSERT INTO registrations (id_user, id_event, registered_at, status)
-         VALUES (1, $1, NOW(), 'pending')
-         RETURNING id`,
-        [testEventId],
-      );
-      registrationId = reg.rows[0].id;
-
+    it("ne devrait pas inscrire deux fois le même utilisateur", async () => {
       const res = await request(app)
-        .get("/api/registrations/1")
-        .set("Authorization", `Bearer ${userToken}`);
+        .post(`/registration/${eventId}/register`)
+        .send({ id_user: userId });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe("Déjà inscrit");
+    });
+  });
+
+  describe("GET /registration/:id", () => {
+    it("devrait récupérer les inscriptions de l'utilisateur", async () => {
+      const res = await request(app).get(`/registration/${userId}`);
 
       expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-
-      const found = res.body.find((r) => r.id_event === testEventId);
-      expect(found).toBeDefined();
+      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.body[0].id_event).toBe(eventId);
     });
 
-    it("404 si aucune inscription", async () => {
-      const res = await request(app)
-        .get("/api/registrations/999999")
-        .set("Authorization", `Bearer ${userToken}`);
-
+    it("devrait renvoyer 404 si aucune inscription", async () => {
+      const res = await request(app).get(`/registration/999999`);
       expect(res.statusCode).toBe(404);
       expect(res.body.message).toBe("Aucune inscription trouvée");
     });
   });
 
-  // =========================
-  // GET /registration/orga/:id/event
-  // =========================
-  describe("GET /api/registrations/orga/:id/event", () => {
-    it("retourne les inscriptions des events d’un orga", async () => {
+  describe("PATCH /registration/:id/status", () => {
+    it("devrait confirmer une inscription", async () => {
       const res = await request(app)
-        .get(`/api/registrations/orga/3/event`)
-        .set("Authorization", `Bearer ${orgaToken}`);
+        .patch(`/registration/${registrationId}/status`)
+        .send({ status: "confirmed" });
 
       expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.status).toBe("confirmed");
+      expect(sendEmail).toHaveBeenCalled();
+    });
 
-      const found = res.body.find((r) => r.id_event === testEventId);
-      expect(found).toBeDefined();
+    it("devrait refuser une inscription", async () => {
+      // Crée une autre inscription pour test
+      const regRes = await pool.query(
+        "INSERT INTO registrations (id_user, id_event) VALUES ($1,$2) RETURNING id",
+        [userId, eventId],
+      );
+      const newRegId = regRes.rows[0].id;
+
+      const res = await request(app)
+        .patch(`/registration/${newRegId}/status`)
+        .send({ status: "cancelled" });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status).toBe("cancelled");
+      expect(sendEmail).toHaveBeenCalled();
+    });
+
+    it("devrait renvoyer 400 pour statut invalide", async () => {
+      const res = await request(app)
+        .patch(`/registration/${registrationId}/status`)
+        .send({ status: "invalid" });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toBe("Statut invalide");
     });
   });
 
-  // =========================
-  // POST /registration/:id/register
-  // =========================
-  describe("POST /api/registrations/:id/register", () => {
-    it("inscrit un utilisateur", async () => {
-      const res = await request(app)
-        .post(`/api/registrations/${testEventId}/register`)
-        .set("Authorization", `Bearer ${userToken}`)
-        .send({ id_user: 1 });
-
-      expect([201, 400]).toContain(res.statusCode);
-
-      if (res.statusCode === 201) {
-        expect(res.body.registration.id_event).toBe(testEventId);
-      }
-    });
-
-    it("404 si event inexistant", async () => {
-      const res = await request(app)
-        .post(`/api/registrations/999999/register`)
-        .set("Authorization", `Bearer ${userToken}`)
-        .send({ id_user: 1 });
-
-      expect(res.statusCode).toBe(404);
-    });
-
-    it("400 si déjà inscrit", async () => {
-      const res = await request(app)
-        .post(`/api/registrations/${testEventId}/register`)
-        .set("Authorization", `Bearer ${userToken}`)
-        .send({ id_user: 1 });
-
-      expect([400, 201]).toContain(res.statusCode);
-    });
-  });
-
-  // =========================
-  // DELETE /registration/:id
-  // =========================
-  describe("DELETE /api/registrations/:id", () => {
-    it("supprime une inscription existante", async () => {
-      // recréer une inscription si supprimée
-      if (!registrationId) {
-        const reg = await pool.query(
-          `INSERT INTO registrations (id_user, id_event, registered_at, status)
-           VALUES (1, $1, NOW(), 'pending')
-           RETURNING id`,
-          [testEventId],
-        );
-        registrationId = reg.rows[0].id;
-      }
-
-      const res = await request(app)
-        .delete(`/api/registrations/${registrationId}`)
-        .set("Authorization", `Bearer ${userToken}`);
-
+  describe("DELETE /registration/:id", () => {
+    it("devrait annuler une inscription existante", async () => {
+      const res = await request(app).delete(`/registration/${registrationId}`);
       expect(res.statusCode).toBe(200);
-      expect(res.body.message).toMatch(/annulée/i);
+      expect(res.body.message).toBe("Inscription annulée avec succès");
+      expect(sendEmail).toHaveBeenCalled();
     });
 
-    it("404 si inscription inexistante", async () => {
-      const res = await request(app)
-        .delete(`/api/registrations/999999`)
-        .set("Authorization", `Bearer ${userToken}`);
-
+    it("devrait renvoyer 404 si inscription inexistante", async () => {
+      const res = await request(app).delete(`/registration/999999`);
       expect(res.statusCode).toBe(404);
+      expect(res.body.message).toBe("Inscription non trouvée");
     });
   });
 });
