@@ -1,6 +1,7 @@
 require("dotenv").config();
 const pool = require("../db"); // instance pg Pool
 const logUserAction = require("../utils/logUserAction");
+const sendEmail = require("../utils/sendEmail");
 
 // GET /:id/registrations -> récupérer les inscriptions d’un utilisateur ou d’un événement
 exports.getRegistrationById = async (req, res) => {
@@ -109,6 +110,25 @@ exports.registerToEvent = async (req, res) => {
       "Inscription à un événement",
     );
 
+    const userQuery = await pool.query(
+      "SELECT email, firstname FROM users WHERE id_user=$1",
+      [id_user],
+    );
+
+    const user = userQuery.rows[0];
+
+    await sendEmail(
+      user.email,
+      "Inscription à un événement",
+      `Bonjour ${user.firstname},
+
+Vous êtes bien inscrit à l'événement "${eventQuery.rows[0].title}".
+
+Votre demande est en attente de validation.
+
+Merci de l'équipe EventFlow App 🙌`,
+    );
+
     res.status(201).json({
       message: "Inscription réussie",
       registration: insertQuery.rows[0],
@@ -125,8 +145,10 @@ exports.updateRegistrationStatus = async (req, res) => {
     const id_registration = req.params.id;
     const { status } = req.body;
 
-    if (!['confirmed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ message: "Statut invalide. Utilisez 'confirmed' ou 'cancelled'" });
+    if (!["confirmed", "cancelled"].includes(status)) {
+      return res.status(400).json({
+        message: "Statut invalide. Utilisez 'confirmed' ou 'cancelled'",
+      });
     }
 
     const regQuery = await pool.query(
@@ -147,15 +169,45 @@ exports.updateRegistrationStatus = async (req, res) => {
     await logUserAction(
       id_user,
       req.user.id,
-      status === 'confirmed' ? 'user_registration_validated' : 'event_registration_cancelled',
+      status === "confirmed"
+        ? "user_registration_validated"
+        : "event_registration_cancelled",
       id_event,
-      status === 'confirmed'
+      status === "confirmed"
         ? "Inscription validée par l'organisateur"
         : "Inscription refusée par l'organisateur",
     );
 
+    const userQuery = await pool.query(
+      "SELECT email, firstname FROM users WHERE id_user=$1",
+      [id_user],
+    );
+
+    const eventQuery = await pool.query(
+      "SELECT title FROM events WHERE id_event=$1",
+      [id_event],
+    );
+
+    const user = userQuery.rows[0];
+    const event = eventQuery.rows[0];
+
+    await sendEmail(
+      user.email,
+      status === "confirmed"
+        ? "Inscription confirmée 🎉"
+        : "Inscription refusée ❌",
+      `Bonjour ${user.firstname},
+
+Votre inscription à l'événement "${event.title}" a été ${
+        status === "confirmed" ? "validée ✅" : "refusée ❌"
+      }.
+
+Merci de l'équipe EventFlow App`,
+    );
+
     res.json({
-      message: status === 'confirmed' ? 'Inscription validée' : 'Inscription refusée',
+      message:
+        status === "confirmed" ? "Inscription validée" : "Inscription refusée",
       registration: updated.rows[0],
     });
   } catch (err) {
@@ -173,23 +225,53 @@ exports.unregisterFromEvent = async (req, res) => {
       "SELECT * FROM registrations WHERE id=$1",
       [id_registration],
     );
+
     if (regQuery.rows.length === 0) {
       return res.status(404).json({ message: "Inscription non trouvée" });
     }
 
     const { id_user, id_event } = regQuery.rows[0];
 
+    // 🔹 récupérer user
+    const userQuery = await pool.query(
+      "SELECT email, firstname FROM users WHERE id_user=$1",
+      [id_user],
+    );
+
+    // 🔹 récupérer event
+    const eventQuery = await pool.query(
+      "SELECT title FROM events WHERE id_event=$1",
+      [id_event],
+    );
+
+    const user = userQuery.rows[0];
+    const event = eventQuery.rows[0];
+
+    // 🔥 DELETE
     await pool.query("DELETE FROM registrations WHERE id=$1", [
       id_registration,
     ]);
 
-    // 🔹 Log de l'annulation
+    // 🔹 Log
     await logUserAction(
       id_user,
       id_user,
       "event_registration_cancelled",
       id_event,
       "Annulation inscription",
+    );
+
+    // ✉️ ENVOI EMAIL
+    await sendEmail(
+      user.email,
+      "Annulation d'inscription ❌",
+      `Bonjour ${user.firstname},
+
+Votre inscription à l'événement "${event.title}" a bien été annulée.
+
+Nous espérons vous revoir bientôt 😊
+
+L'équipe EventFlow App`,
     );
 
     res.json({ message: "Inscription annulée avec succès" });
