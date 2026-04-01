@@ -53,6 +53,7 @@ jobs:
           echo "DB_USER=postgres" >> .env
           echo "DB_PASSWORD=postgres" >> .env
           echo "DB_NAME=eventflow_test" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
         working-directory: ./Backend
 
       - name: 🧪 Run tests
