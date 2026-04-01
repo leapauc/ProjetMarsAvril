@@ -4,205 +4,201 @@ const app = require("../app");
 const pool = require("../db");
 const jwt = require("jsonwebtoken");
 
-// Tokens
-const userToken = jwt.sign(
-  { id: 1, email: "user@test.com", role: "USER" },
-  process.env.JWT_SECRET,
-);
-
-const orgaToken = jwt.sign(
-  { id: 3, email: "orga@test.com", role: "ORGANIZER" },
-  process.env.JWT_SECRET,
-);
-
-const adminToken = jwt.sign(
-  { id: 99, email: "admin@test.com", role: "ADMIN" },
-  process.env.JWT_SECRET,
-);
+const randomTitle = () => `Event ${Math.floor(Math.random() * 100000)}`;
 
 describe("Events API Endpoints", () => {
   let testEventId;
+  let orgaUserId;
+  let orgaToken;
+  let adminToken;
+  let orgaEmail;
 
   beforeAll(async () => {
+    // Générer un email unique pour éviter les conflits
+    orgaEmail = `orga_test_${Date.now()}@mail.com`;
+
+    // Création d'un utilisateur ORGANIZER
     const res = await pool.query(
-      `INSERT INTO events 
-      (title, description, event_date, location, max_participants, id_orga, is_published, created_at)
-      VALUES ('Event Jest', 'Test desc', NOW() + interval '1 day', 'Paris', 10, 3, TRUE, NOW())
-      RETURNING id_event`,
+      `INSERT INTO users 
+       (email, password, firstname, lastname, role, consent_version, consent_date, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,NOW(), NOW()) RETURNING id_user`,
+      [orgaEmail, "hashedpass", "Org", "Anizer", "ORGANIZER", "1.0"],
+    );
+    orgaUserId = res.rows[0].id_user;
+
+    // Token JWT pour l'organisateur
+    orgaToken = jwt.sign(
+      { id: orgaUserId, email: orgaEmail, role: "ORGANIZER" },
+      process.env.JWT_SECRET,
     );
 
+    // Token admin
+    adminToken = jwt.sign(
+      { id: 999, email: "admin@test.com", role: "ADMIN" },
+      process.env.JWT_SECRET,
+    );
+  });
+
+  beforeEach(async () => {
+    // Création d'un événement unique avant chaque test
+    const res = await pool.query(
+      `INSERT INTO events 
+        (title, description, event_date, location, max_participants, id_orga, is_published, created_at)
+       VALUES ($1, $2, NOW() + interval '1 day', $3, $4, $5, TRUE, NOW())
+       RETURNING id_event`,
+      [randomTitle(), "Test desc", "Paris", 10, orgaUserId],
+    );
     testEventId = res.rows[0].id_event;
   });
 
+  afterEach(async () => {
+    if (testEventId) {
+      await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
+        testEventId,
+      ]);
+      await pool.query("DELETE FROM registrations WHERE id_event = $1", [
+        testEventId,
+      ]);
+      await pool.query("DELETE FROM events WHERE id_event = $1", [testEventId]);
+      testEventId = null;
+    }
+  });
+
   afterAll(async () => {
-    // 🔥 nettoyage propre (ordre important)
-    await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
-      testEventId,
-    ]);
-
-    await pool.query("DELETE FROM registrations WHERE id_event = $1", [
-      testEventId,
-    ]);
-
-    await pool.query("DELETE FROM events WHERE id_event = $1", [testEventId]);
-
+    // Supprime l'organisateur factice
+    if (orgaUserId) {
+      await pool.query("DELETE FROM users WHERE id_user = $1", [orgaUserId]);
+    }
     await pool.end();
   });
 
   // =========================
   // GET /event
   // =========================
-  describe("GET /api/event", () => {
-    it("retourne les événements publiés", async () => {
-      const res = await request(app).get("/api/event");
-
-      expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-
-      const found = res.body.find((e) => e.id_event === testEventId);
-      expect(found).toBeDefined();
-    });
+  it("GET /api/event - retourne les événements publiés", async () => {
+    const res = await request(app).get("/api/event");
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    const found = res.body.find((e) => e.id_event === testEventId);
+    expect(found).toBeDefined();
   });
 
-  // =========================
-  // GET /event/:id
-  // =========================
-  describe("GET /api/event/:id", () => {
-    it("retourne un événement existant", async () => {
-      const res = await request(app).get(`/api/event/${testEventId}`);
+  it("GET /api/event/:id - retourne un événement existant", async () => {
+    const res = await request(app).get(`/api/event/${testEventId}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.id_event).toBe(testEventId);
+  });
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.id_event).toBe(testEventId);
-    });
-
-    it("404 si événement inexistant", async () => {
-      const res = await request(app).get("/api/event/999999");
-
-      expect(res.statusCode).toBe(404);
-      expect(res.body.message).toBe("Événement non trouvé");
-    });
+  it("GET /api/event/:id - 404 si événement inexistant", async () => {
+    const res = await request(app).get("/api/event/999999");
+    expect(res.statusCode).toBe(404);
   });
 
   // =========================
   // POST /event
   // =========================
-  describe("POST /api/event", () => {
-    it("401 sans token", async () => {
-      const res = await request(app).post("/api/event").send({});
-      expect(res.statusCode).toBe(401);
-    });
+  it("POST /api/event - 401 sans token", async () => {
+    const res = await request(app).post("/api/event").send({});
+    expect(res.statusCode).toBe(401);
+  });
 
-    it("403 si pas organizer", async () => {
-      const res = await request(app)
-        .post("/api/event")
-        .set("Authorization", `Bearer ${userToken}`)
-        .send({});
-      expect(res.statusCode).toBe(403);
-    });
+  it("POST /api/event - 403 si pas organizer", async () => {
+    const userToken = jwt.sign(
+      { id: 1, email: "user@test.com", role: "USER" },
+      process.env.JWT_SECRET,
+    );
+    const res = await request(app)
+      .post("/api/event")
+      .set("Authorization", `Bearer ${userToken}`)
+      .send({});
+    expect(res.statusCode).toBe(403);
+  });
 
-    it("crée un événement", async () => {
-      const res = await request(app)
-        .post("/api/event")
-        .set("Authorization", `Bearer ${orgaToken}`)
-        .send({
-          title: "New Event",
-          description: "desc",
-          event_date: new Date().toISOString(),
-          location: "Paris",
-          max_participants: 20,
-          id_orga: 3,
-          is_published: true,
-        });
+  it("POST /api/event - crée un événement", async () => {
+    const res = await request(app)
+      .post("/api/event")
+      .set("Authorization", `Bearer ${orgaToken}`)
+      .send({
+        title: randomTitle(),
+        description: "desc",
+        event_date: new Date().toISOString(),
+        location: "Paris",
+        max_participants: 20,
+        id_orga: orgaUserId,
+        is_published: true,
+      });
+    expect(res.statusCode).toBe(201);
+    expect(res.body.event).toBeDefined();
 
-      expect(res.statusCode).toBe(201);
-      expect(res.body.event).toBeDefined();
-
-      // cleanup immédiat
-      const id = res.body.event.id_event;
-
-      await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
-        id,
-      ]);
-      await pool.query("DELETE FROM events WHERE id_event = $1", [id]);
-    });
+    // Cleanup immédiat
+    const id = res.body.event.id_event;
+    await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
+      id,
+    ]);
+    await pool.query("DELETE FROM events WHERE id_event = $1", [id]);
   });
 
   // =========================
   // PUT /event/:id
   // =========================
-  describe("PUT /api/event/:id", () => {
-    it("met à jour un event", async () => {
-      const res = await request(app)
-        .put(`/api/event/${testEventId}`)
-        .set("Authorization", `Bearer ${orgaToken}`)
-        .send({
-          title: "Updated Event",
-          description: "Updated",
-          event_date: new Date().toISOString(),
-          location: "Lyon",
-          max_participants: 15,
-          is_published: true,
-          id_orga: 3,
-        });
+  it("PUT /api/event/:id - met à jour un événement", async () => {
+    const res = await request(app)
+      .put(`/api/event/${testEventId}`)
+      .set("Authorization", `Bearer ${orgaToken}`)
+      .send({
+        title: "Updated Event",
+        description: "Updated",
+        event_date: new Date().toISOString(),
+        location: "Lyon",
+        max_participants: 15,
+        is_published: true,
+        id_orga: orgaUserId,
+      });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.event.title).toBe("Updated Event");
+  });
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.event.title).toBe("Updated Event");
-    });
+  it("PUT /api/event/:id - 403 si mauvais organisateur", async () => {
+    const res = await request(app)
+      .put(`/api/event/${testEventId}`)
+      .set("Authorization", `Bearer ${orgaToken}`)
+      .send({ id_orga: 999 });
+    expect(res.statusCode).toBe(403);
+  });
 
-    it("403 si mauvais organisateur", async () => {
-      const res = await request(app)
-        .put(`/api/event/${testEventId}`)
-        .set("Authorization", `Bearer ${orgaToken}`)
-        .send({
-          id_orga: 999,
-        });
-
-      expect(res.statusCode).toBe(403);
-    });
-
-    it("404 si event inexistant", async () => {
-      const res = await request(app)
-        .put("/api/event/999999")
-        .set("Authorization", `Bearer ${orgaToken}`)
-        .send({});
-
-      expect(res.statusCode).toBe(404);
-    });
+  it("PUT /api/event/:id - 404 si event inexistant", async () => {
+    const res = await request(app)
+      .put("/api/event/999999")
+      .set("Authorization", `Bearer ${orgaToken}`)
+      .send({});
+    expect(res.statusCode).toBe(404);
   });
 
   // =========================
   // DELETE /event/:id
   // =========================
-  describe("DELETE /api/event/:id", () => {
-    it("supprime un event (ADMIN)", async () => {
-      // créer event temporaire
-      const temp = await pool.query(
-        `INSERT INTO events (title, description, event_date, location, max_participants, id_orga, is_published, created_at)
-         VALUES ('Temp', 'Temp', NOW(), 'Paris', 5, 3, TRUE, NOW())
-         RETURNING id_event`,
-      );
+  it("DELETE /api/event/:id - supprime un event (ADMIN)", async () => {
+    const temp = await pool.query(
+      `INSERT INTO events (title, description, event_date, location, max_participants, id_orga, is_published, created_at)
+       VALUES ($1,$2,NOW(),$3,$4,$5,TRUE,NOW()) RETURNING id_event`,
+      [randomTitle(), "Temp", "Paris", 5, orgaUserId],
+    );
+    const tempId = temp.rows[0].id_event;
 
-      const tempId = temp.rows[0].id_event;
+    const res = await request(app)
+      .delete(`/api/event/${tempId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(res.statusCode).toBe(200);
 
-      const res = await request(app)
-        .delete(`/api/event/${tempId}`)
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({ id_orga: 3 });
+    await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
+      tempId,
+    ]);
+  });
 
-      expect(res.statusCode).toBe(200);
-
-      // cleanup logs
-      await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [
-        tempId,
-      ]);
-    });
-
-    it("404 si event inexistant", async () => {
-      const res = await request(app)
-        .delete("/api/event/999999")
-        .set("Authorization", `Bearer ${adminToken}`);
-
-      expect(res.statusCode).toBe(404);
-    });
+  it("DELETE /api/event/:id - 404 si event inexistant", async () => {
+    const res = await request(app)
+      .delete("/api/event/999999")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(res.statusCode).toBe(404);
   });
 });

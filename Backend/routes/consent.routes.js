@@ -20,6 +20,8 @@ router.use(authenticateToken, authorizeRoles("USER", "ORGANIZER"));
  *   post:
  *     summary: Met à jour le consentement d'un utilisateur
  *     tags: [Consent]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:

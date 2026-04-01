@@ -23,6 +23,8 @@ router.use(authenticateToken, authorizeRoles("ADMIN", "USER", "ORGANIZER"));
  *   get:
  *     summary: Récupère l'historique complet
  *     tags: [History]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Historique récupéré avec succès
@@ -67,6 +69,8 @@ router.get("/", getFullHistory);
  *   get:
  *     summary: Récupère l'historique d'un utilisateur spécifique
  *     tags: [History]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

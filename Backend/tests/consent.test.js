@@ -1,35 +1,50 @@
+require("dotenv").config();
 const request = require("supertest");
 const app = require("../app");
 const pool = require("../db");
 const jwt = require("jsonwebtoken");
 
-let token;
-let testUserId;
-
-beforeAll(async () => {
-  // créer un utilisateur test
-  const userRes = await pool.query(
-    `INSERT INTO users (email, password, firstname, lastname, role, consent_version, consent_date)
-     VALUES ('consent@test.com', 'password', 'Consent', 'User', 'USER', '1.0', NOW())
-     RETURNING id_user`,
-  );
-
-  testUserId = userRes.rows[0].id_user;
-
-  // créer un token JWT
-  token = jwt.sign(
-    { id: testUserId, email: "consent@test.com", role: "USER" },
-    process.env.JWT_SECRET,
-  );
-});
-
-afterAll(async () => {
-  await pool.query("DELETE FROM consent_log WHERE id_user = $1", [testUserId]);
-  await pool.query("DELETE FROM users WHERE id_user = $1", [testUserId]);
-  await pool.end();
-});
+// Utilitaires pour générer des emails uniques
+const randomEmail = () =>
+  `consent${Math.floor(Math.random() * 100000)}@test.com`;
 
 describe("Consent API Endpoints", () => {
+  let token;
+  let testUserId;
+  let testEmail;
+
+  beforeEach(async () => {
+    testEmail = randomEmail();
+
+    // Création d'un utilisateur unique pour le test
+    const userRes = await pool.query(
+      `INSERT INTO users (email, password, firstname, lastname, role, consent_version, consent_date)
+       VALUES ($1, 'password', 'Consent', 'User', 'USER', '1.0', NOW())
+       RETURNING id_user`,
+      [testEmail],
+    );
+
+    testUserId = userRes.rows[0].id_user;
+
+    // Génération du token JWT pour cet utilisateur
+    token = jwt.sign(
+      { id: testUserId, email: testEmail, role: "USER" },
+      process.env.JWT_SECRET,
+    );
+  });
+
+  afterEach(async () => {
+    // Nettoyage des logs et utilisateur
+    await pool.query("DELETE FROM consent_log WHERE id_user = $1", [
+      testUserId,
+    ]);
+    await pool.query("DELETE FROM users WHERE id_user = $1", [testUserId]);
+  });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
   describe("POST /api/consent", () => {
     it("devrait mettre à jour le consentement", async () => {
       const res = await request(app)
@@ -43,12 +58,11 @@ describe("Consent API Endpoints", () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toBe("Consentement mis à jour avec succès");
 
-      // vérifier en DB
+      // Vérification en base
       const user = await pool.query(
         "SELECT consent_version FROM users WHERE id_user = $1",
         [testUserId],
       );
-
       expect(user.rows[0].consent_version).toBe("2.0");
     });
 
@@ -74,9 +88,9 @@ describe("Consent API Endpoints", () => {
       expect(res.statusCode).toBe(401);
     });
 
-    it("devrait refuser avec mauvais rôle", async () => {
+    it("devrait refuser avec rôle non autorisé", async () => {
       const badToken = jwt.sign(
-        { id: testUserId, role: "ADMIN" }, // pas autorisé
+        { id: testUserId, email: testEmail, role: "ADMIN" }, // rôle non autorisé
         process.env.JWT_SECRET,
       );
 

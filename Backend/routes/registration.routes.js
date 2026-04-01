@@ -26,6 +26,8 @@ router.use(authenticateToken, authorizeRoles("USER", "ORGANIZER"));
  *   get:
  *     summary: Récupère toutes les inscriptions aux événements d'un organisateur
  *     tags: [Registrations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -97,6 +99,8 @@ router.get("/orga/:id/event", getRegistrationOfEventByOrga);
  *   get:
  *     summary: Récupère toutes les inscriptions d'un utilisateur
  *     tags: [Registrations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -156,6 +160,8 @@ router.get("/:id", getRegistrationById);
  *   post:
  *     summary: Inscrire un utilisateur à un événement
  *     tags: [Registrations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -221,6 +227,8 @@ router.post("/:id/register", registerToEvent);
  *   delete:
  *     summary: Annule une inscription à un événement
  *     tags: [Registrations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -273,6 +281,8 @@ router.delete("/:id", unregisterFromEvent);
  *   patch:
  *     summary: Valider ou refuser une inscription (organisateur)
  *     tags: [Registrations]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -300,6 +310,10 @@ router.delete("/:id", unregisterFromEvent);
  *       404:
  *         description: Inscription non trouvée
  */
-router.patch("/:id/status", authorizeRoles("ORGANIZER", "ADMIN"), updateRegistrationStatus);
+router.patch(
+  "/:id/status",
+  authorizeRoles("ORGANIZER", "ADMIN"),
+  updateRegistrationStatus,
+);
 
 module.exports = router;

@@ -25,6 +25,8 @@ router.use(authenticateToken, authorizeRoles("ADMIN"));
  *   get:
  *     summary: Récupère tous les utilisateurs
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Liste des utilisateurs récupérée avec succès
@@ -71,6 +73,8 @@ router.get("/", getAllUsers);
  *   get:
  *     summary: Récupère un utilisateur par son ID
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -133,6 +137,8 @@ router.get("/:id", getUserById);
  *   post:
  *     summary: Crée un nouvel utilisateur
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -208,6 +214,8 @@ router.post("/", createUser);
  *   put:
  *     summary: Met à jour un utilisateur
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -253,6 +261,8 @@ router.put("/:id", updateUser);
  *   delete:
  *     summary: Anonymise un utilisateur (RGPD)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

@@ -21,7 +21,7 @@ const {
 
 /**
  * @swagger
- * /event:
+ * /api/event:
  *   get:
  *     summary: Récupère tous les événements publiés
  *     tags: [Events]
@@ -68,11 +68,66 @@ const {
  *         description: Erreur serveur
  */
 router.get("/", getAllEvents);
-router.get("/all", authenticateToken, authorizeRoles("ADMIN"), getAllEventsAdmin);
+/**
+ * @swagger
+ * /api/event/all:
+ *   get:
+ *     summary: Récupère tous les événements publiés
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des événements récupérée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_event:
+ *                     type: integer
+ *                     example: 1
+ *                   title:
+ *                     type: string
+ *                     example: "Conférence Node.js"
+ *                   description:
+ *                     type: string
+ *                     example: "Une conférence sur Node.js"
+ *                   event_date:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2026-04-10T14:00:00Z"
+ *                   location:
+ *                     type: string
+ *                     example: "Paris, France"
+ *                   max_participants:
+ *                     type: integer
+ *                     example: 50
+ *                   id_orga:
+ *                     type: integer
+ *                     example: 2
+ *                   is_published:
+ *                     type: boolean
+ *                     example: true
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2026-03-30T10:00:00Z"
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get(
+  "/all",
+  authenticateToken,
+  authorizeRoles("ADMIN"),
+  getAllEventsAdmin,
+);
 
 /**
  * @swagger
- * /event/{id}:
+ * /api/event/{id}:
  *   get:
  *     summary: Récupère un événement par son ID
  *     tags: [Events]
@@ -136,10 +191,12 @@ router.get("/:id", getEventById);
 
 /**
  * @swagger
- * /event:
+ * /api/event:
  *   post:
  *     summary: Crée un nouvel événement
  *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -191,10 +248,12 @@ router.post("/", authenticateToken, authorizeRoles("ORGANIZER"), createEvent);
 
 /**
  * @swagger
- * /event/{id}:
+ * /api/event/{id}:
  *   put:
  *     summary: Met à jour un événement
  *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -248,10 +307,12 @@ router.put("/:id", authenticateToken, authorizeRoles("ORGANIZER"), updateEvent);
 
 /**
  * @swagger
- * /event/{id}:
+ * /api/event/{id}:
  *   delete:
  *     summary: Supprime un événement
  *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
