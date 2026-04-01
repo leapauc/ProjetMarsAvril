@@ -4,9 +4,9 @@ services:
     container_name: eventflow_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: dfqdhjldhgzdg23dzgzdg
-      POSTGRES_DB: eventflow
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5433:5432"
     volumes:
@@ -22,21 +22,29 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: dfqdhjldhgzdg23dzgzdg
-      DB_NAME: eventflow
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
       PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      NODE_ENV: production
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
     depends_on:
       - postgres
 
   frontend:
-    build: ../Frontend
+    build:
+      context: ../Frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
     container_name: eventflow_front
     restart: always
     ports:
-      - "5173:5173"
+      - "5173:80"
     environment:
-      VITE_API_URL: http://localhost:3003
+      VITE_API_URL: ${VITE_API_URL}
     depends_on:
       - api
 
