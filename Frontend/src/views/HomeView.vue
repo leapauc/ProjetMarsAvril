@@ -105,11 +105,14 @@ const stats  = reactive({ events: 0, users: 0, organizers: 0 })
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/event')
-    events.value = data
-    stats.events     = data.length
-    stats.users      = 200
-    stats.organizers = 12
+    const [eventsRes, statsRes] = await Promise.all([
+      api.get('/event'),
+      api.get('/stats'),
+    ])
+    events.value = eventsRes.data
+    stats.events     = statsRes.data.events     ?? eventsRes.data.length
+    stats.users      = statsRes.data.users      ?? 0
+    stats.organizers = statsRes.data.organizers ?? 0
   } catch (e) {
     console.error(e)
   } finally {

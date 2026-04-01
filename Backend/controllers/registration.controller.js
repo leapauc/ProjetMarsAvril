@@ -165,11 +165,13 @@ exports.updateRegistrationStatus = async (req, res) => {
       id_event,
     );
 
+    const { html: statusHtml, attachments: statusAttachments } = await statusTemplate(firstname, title, status, id_event);
     await sendEmail(
       email,
       status === "confirmed" ? "Inscription validée" : "Inscription refusée",
       `Statut mis à jour`,
-      statusTemplate(firstname, title, status),
+      statusHtml,
+      statusAttachments,
     );
 
     res.json(updated.rows[0]);

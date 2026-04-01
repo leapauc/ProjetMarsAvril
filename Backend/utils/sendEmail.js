@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async (to, subject, text, html) => {
+const sendEmail = async (to, subject, text, html, attachments = []) => {
   try {
     await transporter.sendMail({
       from: `"Event App" <${process.env.EMAIL_USER}>`,
@@ -16,6 +16,7 @@ const sendEmail = async (to, subject, text, html) => {
       subject,
       text,
       html,
+      attachments,
     });
   } catch (error) {
     console.error("Erreur envoi email:", error);

@@ -51,7 +51,7 @@ const {
 router.get(
   "/:id/export/pdf",
   authenticateToken,
-  authorizeRoles("USER", "ORGANIZER"),
+  authorizeRoles("USER", "ORGANIZER", "ADMIN"),
   exportMyDataPDF,
 );
 
@@ -105,7 +105,7 @@ router.get(
 router.get(
   "/:id/export",
   authenticateToken,
-  authorizeRoles("USER", "ORGANIZER"),
+  authorizeRoles("USER", "ORGANIZER", "ADMIN"),
   exportMyData,
 );
 

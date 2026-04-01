@@ -18,7 +18,7 @@ const {
   authorizeRoles,
 } = require("../middlewares/auth.middleware");
 
-router.use(authenticateToken, authorizeRoles("USER", "ORGANIZER"));
+router.use(authenticateToken, authorizeRoles("USER", "ORGANIZER", "ADMIN"));
 
 /**
  * @swagger
