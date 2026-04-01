@@ -57,4 +57,4 @@ jobs:
 
       - name: 🧪 Run tests
         working-directory: ./Backend
-        run: npm test
+        run: npm test -- --runInBand
