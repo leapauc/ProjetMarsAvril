@@ -139,7 +139,6 @@ describe("API /api/history", () => {
     const res = await request(app)
       .get(`/api/history/${normalUser.id_user}`)
       .set("Authorization", `Bearer ${authTokenUser}`);
-    expect(res.statusCode).toBe(200); // USER peut accéder à son propre historique
-    // pour tester refus complet, il faudrait un rôle non autorisé
+    expect(res.statusCode).toBe(403);
   });
 });
