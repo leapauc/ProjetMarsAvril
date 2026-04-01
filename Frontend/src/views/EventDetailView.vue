@@ -138,6 +138,22 @@
         <p>Cet événement n'existe pas ou a été supprimé.</p>
       </div>
     </div>
+
+    <!-- Modale de confirmation -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="modal.show" class="modal-overlay" @click.self="closeModal">
+          <div class="modal-box card">
+            <h3 class="modal-title">{{ modal.title }}</h3>
+            <p class="modal-msg">{{ modal.message }}</p>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" @click="closeModal">Annuler</button>
+              <button class="btn" :class="modal.btnClass" @click="confirmModal">{{ modal.btnLabel }}</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -234,7 +250,7 @@ async function register() {
         id_user: auth.user.id_user,
       },
     );
-    registration.value = data.registration;
+    registration.value = data.registration ?? data;
     regSuccess.value = "Inscription réussie !";
   } catch (e) {
     regError.value =
@@ -258,14 +274,30 @@ async function cancelReg() {
   }
 }
 
-async function deleteEvent() {
-  if (!confirm("Supprimer cet événement définitivement ?")) return;
-  try {
-    await api.delete(`/event/${event.value.id_event}`);
-    router.push("/events");
-  } catch (e) {
-    alert(e.response?.data?.message || "Erreur lors de la suppression");
-  }
+// ── Modal ─────────────────────────────────────────────────────────────────
+const modal = ref({ show: false, title: "", message: "", btnLabel: "Confirmer", btnClass: "btn-danger", pending: null });
+function closeModal() { modal.value.show = false; }
+function confirmModal() {
+  if (modal.value.pending) modal.value.pending();
+  closeModal();
+}
+
+function deleteEvent() {
+  modal.value = {
+    show: true,
+    title: "Supprimer l'événement",
+    message: `Supprimer « ${event.value.title} » définitivement ? Cette action est irréversible.`,
+    btnLabel: "Supprimer",
+    btnClass: "btn-danger",
+    pending: async () => {
+      try {
+        await api.delete(`/event/${event.value.id_event}`);
+        router.push("/events");
+      } catch (e) {
+        regError.value = e.response?.data?.message || "Erreur lors de la suppression";
+      }
+    },
+  };
 }
 </script>
 
@@ -423,4 +455,38 @@ async function deleteEvent() {
     order: -1;
   }
 }
+/* ── Modal ───────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal-box {
+  max-width: 440px;
+  width: 100%;
+  padding: 28px;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.modal-msg {
+  font-size: 14px;
+  color: var(--c-text-2);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
 </style>

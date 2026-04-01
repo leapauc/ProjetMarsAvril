@@ -2,6 +2,7 @@ const express = require("express");
 const {
   getFullHistory,
   getHistoryById,
+  getMyHistory,
 } = require("../controllers/history.controller");
 /**
  * @swagger
@@ -15,7 +16,8 @@ const {
   authorizeRoles,
 } = require("../middlewares/auth.middleware");
 
-router.use(authenticateToken, authorizeRoles("ADMIN", "USER", "ORGANIZER"));
+// Historique personnel (USER / ORGANIZER) — déclaré avant /:id
+router.get("/me", authenticateToken, getMyHistory);
 
 /**
  * @swagger
@@ -61,7 +63,7 @@ router.use(authenticateToken, authorizeRoles("ADMIN", "USER", "ORGANIZER"));
  *       500:
  *         description: Erreur serveur
  */
-router.get("/", getFullHistory);
+router.get("/", authenticateToken, authorizeRoles("ADMIN"), getFullHistory);
 
 /**
  * @swagger
@@ -116,6 +118,6 @@ router.get("/", getFullHistory);
  *       500:
  *         description: Erreur serveur
  */
-router.get("/:id", getHistoryById);
+router.get("/:id", authenticateToken, authorizeRoles("ADMIN"), getHistoryById);
 
 module.exports = router;

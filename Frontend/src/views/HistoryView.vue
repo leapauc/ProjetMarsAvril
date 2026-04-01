@@ -155,7 +155,7 @@ function actionLabel(type) {
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/history')
+    const { data } = await api.get('/history/me')
     rows.value = data
   } catch (e) {
     console.error(e)

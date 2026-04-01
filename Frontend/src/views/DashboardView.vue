@@ -42,6 +42,15 @@
           <span class="tab-count tab-count-warn" v-if="pendingCount">{{ pendingCount }}</span>
         </button>
         <button
+          v-if="auth.isOrganizer"
+          class="tab-btn"
+          :class="{ active: tab === 'myregs' }"
+          @click="tab = 'myregs'"
+        >
+          🎟 Mes inscriptions
+          <span class="tab-count" v-if="myRegs.length">{{ myRegs.length }}</span>
+        </button>
+        <button
           class="tab-btn"
           :class="{ active: tab === 'profile' }"
           @click="tab = 'profile'"
@@ -156,6 +165,39 @@
         </div>
       </div>
 
+      <!-- ORGANIZER : mes inscriptions en tant que participant -->
+      <div v-if="auth.isOrganizer && tab === 'myregs'" class="items-list anim-up d2">
+        <div v-if="!myRegs.length" class="empty-state">
+          <div class="empty-icon">🎟️</div>
+          <h3>Aucune inscription</h3>
+          <p>Explorez les événements disponibles.</p>
+          <RouterLink to="/events" class="btn btn-primary" style="margin-top:16px">Voir les événements</RouterLink>
+        </div>
+        <div
+          v-for="(reg, i) in myRegs"
+          :key="reg.id"
+          class="item-card card anim-up"
+          :class="`d${Math.min(i + 2, 6)}`"
+        >
+          <div class="item-info">
+            <div class="item-top">
+              <span class="badge" :class="statusClass(reg.status)">{{ statusLabel(reg.status) }}</span>
+              <span class="item-date">{{ formatDate(reg.event_date) }}</span>
+            </div>
+            <h3 class="item-title">{{ reg.title }}</h3>
+            <p class="item-meta">Inscrit le {{ formatDate(reg.registered_at) }}</p>
+          </div>
+          <div class="item-actions">
+            <RouterLink :to="`/events/${reg.id_event}`" class="btn btn-ghost btn-sm">Voir</RouterLink>
+            <button
+              class="btn btn-danger btn-sm"
+              @click="openCancelOrgaRegModal(reg)"
+              :disabled="reg.status === 'cancelled'"
+            >Annuler</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ORGANIZER : validations inscriptions -->
       <div v-if="auth.isOrganizer && tab === 'validations'" class="items-list anim-up d2">
         <div v-if="!validations.length" class="empty-state">
@@ -240,6 +282,7 @@ import api from "../api/axios";
 const auth = useAuthStore();
 const items = ref([]);
 const validations = ref([]);
+const myRegs = ref([]);
 const loading = ref(true);
 const tab = ref("events");
 
@@ -305,12 +348,14 @@ function statusLabel(s) {
 onMounted(async () => {
   try {
     if (auth.isOrganizer) {
-      const [eventsRes, regsRes] = await Promise.all([
+      const [eventsRes, regsRes, myRegsRes] = await Promise.all([
         api.get(`/me/${auth.user.id_user}`),
         api.get(`/registrations/orga/${auth.user.id_user}/event`),
+        api.get(`/registrations/${auth.user.id_user}`),
       ]);
       items.value = eventsRes.data.events || [];
       validations.value = Array.isArray(regsRes.data) ? regsRes.data : [];
+      myRegs.value = Array.isArray(myRegsRes.data) ? myRegsRes.data : [];
     } else {
       const { data } = await api.get(`/registrations/${auth.user.id_user}`);
       items.value = Array.isArray(data) ? data : [];
@@ -331,6 +376,26 @@ function openDeleteModal(ev) {
     btnLabel: "Supprimer",
     btnClass: "btn-danger",
     pending: () => doDeleteEvent(ev),
+  };
+}
+
+function openCancelOrgaRegModal(reg) {
+  modal.value = {
+    show: true,
+    title: "Annuler l'inscription",
+    message: `Annuler votre inscription à "${reg.title}" ?`,
+    btnLabel: "Annuler l'inscription",
+    btnClass: "btn-danger",
+    pending: async () => {
+      try {
+        await api.delete(`/registrations/${reg.id}`);
+        const idx = myRegs.value.findIndex((r) => r.id === reg.id);
+        if (idx !== -1) myRegs.value[idx] = { ...myRegs.value[idx], status: "cancelled" };
+        showToast("Inscription annulée");
+      } catch (e) {
+        showToast(e.response?.data?.message || "Erreur", "error");
+      }
+    },
   };
 }
 
