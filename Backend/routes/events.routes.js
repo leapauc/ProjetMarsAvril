@@ -5,6 +5,7 @@ const {
   createEvent,
   updateEvent,
   deleteEvent,
+  getAllEventsAdmin,
 } = require("../controllers/events.controller");
 /**
  * @swagger
@@ -67,6 +68,7 @@ const {
  *         description: Erreur serveur
  */
 router.get("/", getAllEvents);
+router.get("/all", authenticateToken, authorizeRoles("ADMIN"), getAllEventsAdmin);
 
 /**
  * @swagger

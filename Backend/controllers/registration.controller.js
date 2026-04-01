@@ -18,7 +18,7 @@ exports.getRegistrationById = async (req, res) => {
     );
 
     if (registrations.rows.length === 0) {
-      return res.status(404).json({ message: "Aucune inscription trouvée" });
+      return res.json([]);
     }
 
     res.json(registrations.rows);
@@ -112,6 +112,51 @@ exports.registerToEvent = async (req, res) => {
     res.status(201).json({
       message: "Inscription réussie",
       registration: insertQuery.rows[0],
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+// PATCH /:id/status -> valider ou refuser une inscription (organisateur uniquement)
+exports.updateRegistrationStatus = async (req, res) => {
+  try {
+    const id_registration = req.params.id;
+    const { status } = req.body;
+
+    if (!['confirmed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ message: "Statut invalide. Utilisez 'confirmed' ou 'cancelled'" });
+    }
+
+    const regQuery = await pool.query(
+      "SELECT * FROM registrations WHERE id=$1",
+      [id_registration],
+    );
+    if (regQuery.rows.length === 0) {
+      return res.status(404).json({ message: "Inscription non trouvée" });
+    }
+
+    const { id_user, id_event } = regQuery.rows[0];
+
+    const updated = await pool.query(
+      "UPDATE registrations SET status=$1 WHERE id=$2 RETURNING *",
+      [status, id_registration],
+    );
+
+    await logUserAction(
+      id_user,
+      req.user.id,
+      status === 'confirmed' ? 'user_registration_validated' : 'event_registration_cancelled',
+      id_event,
+      status === 'confirmed'
+        ? "Inscription validée par l'organisateur"
+        : "Inscription refusée par l'organisateur",
+    );
+
+    res.json({
+      message: status === 'confirmed' ? 'Inscription validée' : 'Inscription refusée',
+      registration: updated.rows[0],
     });
   } catch (err) {
     console.error(err);

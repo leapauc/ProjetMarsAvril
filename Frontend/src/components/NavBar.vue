@@ -13,7 +13,9 @@
         <RouterLink to="/" class="nav-link" @click="open = false">Accueil</RouterLink>
         <RouterLink to="/events" class="nav-link" @click="open = false">Événements</RouterLink>
         <RouterLink v-if="auth.isAuthenticated" to="/dashboard" class="nav-link" @click="open = false">Dashboard</RouterLink>
+        <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link nav-link-admin" @click="open = false">⚙ Admin</RouterLink>
         <RouterLink to="/privacy" class="nav-link" @click="open = false">Confidentialité</RouterLink>
+        <RouterLink v-if="auth.isAuthenticated" to="/history" class="nav-link" @click="open = false">Historique</RouterLink>
         <!-- Mobile-only auth actions -->
         <div class="mobile-auth" v-if="!auth.isAuthenticated">
           <RouterLink to="/login" class="btn btn-secondary btn-sm" @click="open = false">Connexion</RouterLink>
@@ -128,6 +130,8 @@ function handleLogout() {
   background: var(--c-card);
 }
 .nav-link.router-link-exact-active { color: var(--c-primary); }
+.nav-link-admin { color: #f87171 !important; }
+.nav-link-admin:hover { background: rgba(220,38,38,.1) !important; }
 
 /* Desktop actions */
 .nav-actions {
@@ -184,7 +188,7 @@ function handleLogout() {
 /* Mobile */
 .mobile-auth { display: none; }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .nav-actions { display: none; }
   .hamburger   { display: flex; }
   .nav-links {
