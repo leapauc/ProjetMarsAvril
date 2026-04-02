@@ -127,7 +127,7 @@ describe("API /api/me/:id", () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/pdf");
     expect(res.headers["content-disposition"]).toContain(
-      `user_${testUser.id_user}_data.pdf`,
+      `eventflow_donnees_${testUser.id_user}.pdf`,
     );
   });
 });
