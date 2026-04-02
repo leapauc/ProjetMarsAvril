@@ -1,17 +1,20 @@
 // db.js
-require("dotenv").config();
 const { Pool } = require("pg");
+require("dotenv").config();
 
 let pool;
-let supabase;
 
-if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
-  // Utilisation du client Supabase JS
-  const { createClient } = require("@supabase/supabase-js"); // <-- important !
-  supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-  console.log("✅ Connected to Supabase via JS client");
+// Render PostgreSQL fournit DATABASE_URL avec tout ce qu'il faut
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false, // requis sur Render
+    },
+  });
+  console.log("✅ Connected using Render PostgreSQL DATABASE_URL");
 } else {
-  // Connexion locale PostgreSQL
+  // Dev local
   pool = new Pool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -19,12 +22,13 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
   });
-
-  pool.on("connect", () => console.log("✅ Connected to local db"));
-  pool.on("error", (err) => {
-    console.error("❌ Unexpected error on idle client", err);
-    process.exit(-1);
-  });
+  console.log("✅ Connected using local database configuration");
 }
 
-module.exports = { pool, supabase };
+pool.on("connect", () => console.log("✅ Connected to PostgreSQL"));
+pool.on("error", (err) => {
+  console.error("❌ Unexpected error on idle client", err);
+  process.exit(-1);
+});
+
+module.exports = pool;
