@@ -1,6 +1,6 @@
 // scheduler.js
 const cron = require("node-cron");
-const pool = require("./db"); // ton db.js
+const pool = require("./db");
 const log = console.log;
 
 // Fonction de cleanup
@@ -13,16 +13,19 @@ async function cleanupInactiveUsers() {
   }
 }
 
-// Planification : tous les jours à 03:00
-cron.schedule(
-  "0 3 * * *",
-  () => {
-    log("⏰ Running scheduled job: cleanup_inactive_users");
-    cleanupInactiveUsers();
-  },
-  {
-    timezone: "Europe/Paris", // ou la timezone de ton choix
-  },
-);
-
+// Exporte la fonction pour tests
 module.exports = cleanupInactiveUsers;
+
+// Lancer le cron uniquement si on n'est pas en test
+if (process.env.NODE_ENV !== "test") {
+  cron.schedule(
+    "0 3 * * *",
+    () => {
+      log("⏰ Running scheduled job: cleanup_inactive_users");
+      cleanupInactiveUsers();
+    },
+    {
+      timezone: "Europe/Paris",
+    },
+  );
+}
