@@ -6,6 +6,8 @@
 
 ## Présentation du projet
 
+Projet disponible via l'url suivante : <https://frontend-eventflow.onrender.com/>
+
 ### 🛠️ Stack technique
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-3-42b883?logo=vue.js)
@@ -75,6 +77,11 @@ npm install express cors dotenv pg swagger-ui-express swagger-jsdoc jsonwebtoken
 npm install --save-dev jest supertest
 npm install nodemon --save-dev
 ```
+
+### Documentation API
+
+Documentation disponible à l'url suivante :
+<https://projetmarsavril.onrender.com/api-docs/>
 
 ## Frontend
 
