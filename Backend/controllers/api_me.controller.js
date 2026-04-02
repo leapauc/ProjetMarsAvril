@@ -212,7 +212,8 @@ exports.exportMyDataPDF = async (req, res) => {
     const { id } = req.params;
 
     const data = await getUserWithEvents(id);
-    if (!data) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    if (!data)
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
 
     const events = data.events || [];
 
@@ -222,47 +223,77 @@ exports.exportMyDataPDF = async (req, res) => {
       [id, req.ip || "0.0.0.0", "Export PDF des données personnelles"],
     );
 
-    res.setHeader("Content-Disposition", `attachment; filename="eventflow_donnees_${id}.pdf"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="eventflow_donnees_${id}.pdf"`,
+    );
     res.setHeader("Content-Type", "application/pdf");
 
-    const doc = new PDFDocument({ size: "A4", margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+    const doc = new PDFDocument({
+      size: "A4",
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
     doc.pipe(res);
 
     const PW = 595.28;
     const PH = 841.89;
-    const M  = 48;
+    const M = 48;
 
     const PURPLE = "#7c3aed";
-    const CYAN   = "#06b6d4";
-    const DARK   = "#1e1b4b";
-    const BODY   = "#374151";
-    const MUTED  = "#9ca3af";
+    const CYAN = "#06b6d4";
+    const DARK = "#1e1b4b";
+    const BODY = "#374151";
+    const MUTED = "#9ca3af";
     const STRIPE = "#f5f3ff";
-    const WHITE  = "#ffffff";
-    const GREEN  = "#059669";
+    const WHITE = "#ffffff";
+    const GREEN = "#059669";
     const ORANGE = "#d97706";
-    const RED    = "#dc2626";
+    const RED = "#dc2626";
 
     // ── HEADER ──────────────────────────────────────────────────
     doc.rect(0, 0, PW, 88).fill(DARK);
     doc.rect(0, 0, PW, 4).fill(PURPLE);
 
     // Icone éclair dessinée en polygone
-    const lx = M, ly = 22;
-    doc.save()
-       .translate(lx, ly)
-       .polygon([8,0],[14,0],[6,18],[12,18],[0,36],[10,36],[4,20],[10,20])
-       .fill("#a78bfa");
+    const lx = M,
+      ly = 22;
+    doc
+      .save()
+      .translate(lx, ly)
+      .polygon(
+        [8, 0],
+        [14, 0],
+        [6, 18],
+        [12, 18],
+        [0, 36],
+        [10, 36],
+        [4, 20],
+        [10, 20],
+      )
+      .fill("#a78bfa");
     doc.restore();
 
-    doc.fontSize(24).font("Helvetica-Bold").fillColor(WHITE)
-       .text("EventFlow", M + 22, 24);
-    doc.fontSize(10).font("Helvetica").fillColor("#a5b4fc")
-       .text("Rapport de données personnelles — RGPD Art. 20", M, 56);
+    doc
+      .fontSize(24)
+      .font("Helvetica-Bold")
+      .fillColor(WHITE)
+      .text("EventFlow", M + 22, 24);
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .fillColor("#a5b4fc")
+      .text("Rapport de données personnelles — RGPD Art. 20", M, 56);
 
-    const dateStr = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-    doc.fontSize(9).font("Helvetica").fillColor("#94a3b8")
-       .text(`Généré le ${dateStr}`, 0, 60, { align: "right", width: PW - M });
+    const dateStr = new Date().toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    doc
+      .fontSize(9)
+      .font("Helvetica")
+      .fillColor("#94a3b8")
+      .text(`Généré le ${dateStr}`, 0, 60, { align: "right", width: PW - M });
 
     doc.rect(0, 86, PW, 2).fill(PURPLE);
 
@@ -282,50 +313,83 @@ exports.exportMyDataPDF = async (req, res) => {
       ensurePage();
       doc.rect(M, y, PW - M * 2, 30).fillAndStroke(color + "18", color + "33");
       doc.rect(M, y, 4, 30).fill(color);
-      doc.fontSize(11).font("Helvetica-Bold").fillColor(color)
-         .text(title, M + 14, y + 9);
+      doc
+        .fontSize(11)
+        .font("Helvetica-Bold")
+        .fillColor(color)
+        .text(title, M + 14, y + 9);
       y += 38;
     };
 
     const drawRow = (label, value, stripe = false) => {
       ensurePage();
       if (stripe) doc.rect(M, y, PW - M * 2, 22).fill(STRIPE);
-      doc.fontSize(8.5).font("Helvetica").fillColor(MUTED)
-         .text(label.toUpperCase(), M + 10, y + 7);
-      doc.fontSize(10).font("Helvetica-Bold").fillColor(BODY)
-         .text(String(value ?? "—"), M + 175, y + 6, { width: PW - M * 2 - 185 });
+      doc
+        .fontSize(8.5)
+        .font("Helvetica")
+        .fillColor(MUTED)
+        .text(label.toUpperCase(), M + 10, y + 7);
+      doc
+        .fontSize(10)
+        .font("Helvetica-Bold")
+        .fillColor(BODY)
+        .text(String(value ?? "—"), M + 175, y + 6, {
+          width: PW - M * 2 - 185,
+        });
       y += 22;
     };
 
     const statusOf = (s) => ({
       color: s === "confirmed" ? GREEN : s === "pending" ? ORANGE : RED,
-      label: s === "confirmed" ? "Confirmé" : s === "pending" ? "En attente" : "Annulé",
+      label:
+        s === "confirmed"
+          ? "Confirmé"
+          : s === "pending"
+            ? "En attente"
+            : "Annulé",
     });
 
     // ── SECTION IDENTITÉ ────────────────────────────────────────
     drawSection("Informations personnelles", PURPLE);
-    drawRow("Identifiant",       `#${data.id_user}`,                         false);
-    drawRow("Prénom",            data.firstname,                              true);
-    drawRow("Nom",               data.lastname,                               false);
-    drawRow("Email",             data.email,                                  true);
-    drawRow("Téléphone",         data.phone || "Non renseigné",               false);
-    drawRow("Rôle",              data.role,                                   true);
-    drawRow("Membre depuis",     data.created_at ? new Date(data.created_at).toLocaleDateString("fr-FR") : "—", false);
-    drawRow("Compte anonymisé",  data.is_anonymized ? "Oui" : "Non",          true);
+    drawRow("Identifiant", `#${data.id_user}`, false);
+    drawRow("Prénom", data.firstname, true);
+    drawRow("Nom", data.lastname, false);
+    drawRow("Email", data.email, true);
+    drawRow("Téléphone", data.phone || "Non renseigné", false);
+    drawRow("Rôle", data.role, true);
+    drawRow(
+      "Membre depuis",
+      data.created_at
+        ? new Date(data.created_at).toLocaleDateString("fr-FR")
+        : "—",
+      false,
+    );
+    drawRow("Compte anonymisé", data.is_anonymized ? "Oui" : "Non", true);
 
     // ── SECTION CONSENTEMENT ────────────────────────────────────
     drawSection("Consentement RGPD", CYAN);
-    drawRow("Version acceptée",    data.consent_version, false);
-    drawRow("Date d'acceptation",  data.consent_date
-      ? new Date(data.consent_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
-      : "—", true);
+    drawRow("Version acceptée", data.consent_version, false);
+    drawRow(
+      "Date d'acceptation",
+      data.consent_date
+        ? new Date(data.consent_date).toLocaleDateString("fr-FR", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })
+        : "—",
+      true,
+    );
 
     // ── SECTION ÉVÉNEMENTS ──────────────────────────────────────
     drawSection(`Événements associés (${events.length})`, GREEN);
 
     if (events.length === 0) {
-      doc.fontSize(10).font("Helvetica").fillColor(MUTED)
-         .text("Aucun événement associé à ce compte.", M + 10, y + 4);
+      doc
+        .fontSize(10)
+        .font("Helvetica")
+        .fillColor(MUTED)
+        .text("Aucun événement associé à ce compte.", M + 10, y + 4);
       y += 28;
     } else {
       events.forEach((ev, i) => {
@@ -334,17 +398,31 @@ exports.exportMyDataPDF = async (req, res) => {
         doc.rect(M, y, PW - M * 2, 50).fill(bg);
         doc.rect(M, y, 3, 50).fill(GREEN);
 
-        doc.fontSize(11).font("Helvetica-Bold").fillColor(DARK)
-           .text(ev.title, M + 12, y + 8, { width: PW - M * 2 - 110 });
+        doc
+          .fontSize(11)
+          .font("Helvetica-Bold")
+          .fillColor(DARK)
+          .text(ev.title, M + 12, y + 8, { width: PW - M * 2 - 110 });
 
-        const evDate = ev.event_date ? new Date(ev.event_date).toLocaleDateString("fr-FR") : "—";
-        doc.fontSize(9).font("Helvetica").fillColor(MUTED)
-           .text(`${evDate}  •  ${ev.location || "—"}`, M + 12, y + 28);
+        const evDate = ev.event_date
+          ? new Date(ev.event_date).toLocaleDateString("fr-FR")
+          : "—";
+        doc
+          .fontSize(9)
+          .font("Helvetica")
+          .fillColor(MUTED)
+          .text(`${evDate}  •  ${ev.location || "—"}`, M + 12, y + 28);
 
         if (ev.status) {
           const { color, label } = statusOf(ev.status);
-          doc.fontSize(8).font("Helvetica-Bold").fillColor(color)
-             .text(label.toUpperCase(), PW - M - 90, y + 20, { width: 82, align: "right" });
+          doc
+            .fontSize(8)
+            .font("Helvetica-Bold")
+            .fillColor(color)
+            .text(label.toUpperCase(), PW - M - 90, y + 20, {
+              width: 82,
+              align: "right",
+            });
         }
         y += 56;
       });
@@ -353,15 +431,26 @@ exports.exportMyDataPDF = async (req, res) => {
     // ── FOOTER ──────────────────────────────────────────────────
     doc.rect(0, PH - 42, PW, 1).fill(PURPLE + "55");
     doc.rect(0, PH - 41, PW, 41).fill("#f8f9fa");
-    doc.fontSize(8).font("Helvetica").fillColor(MUTED)
-       .text(
-         "Ce document a été généré automatiquement par EventFlow. Vos données sont protégées conformément au RGPD (Règlement UE 2016/679).",
-         M, PH - 30, { align: "center", width: PW - M * 2 }
-       );
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .fillColor(MUTED)
+      .text(
+        "Ce document a été généré automatiquement par EventFlow. Vos données sont protégées conformément au RGPD (Règlement UE 2016/679).",
+        M,
+        PH - 30,
+        { align: "center", width: PW - M * 2 },
+      );
 
     doc.end();
 
-    await logUserAction(id, id, "data_exported_pdf", null, "Export PDF des données personnelles");
+    await logUserAction(
+      id,
+      id,
+      "data_exported_pdf",
+      null,
+      "Export PDF des données personnelles",
+    );
   } catch (err) {
     console.error("❌ export PDF:", err);
     if (!res.headersSent) res.status(500).json({ message: err.message });

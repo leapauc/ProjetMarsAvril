@@ -1,4 +1,6 @@
 require("dotenv").config();
+require("./scheduler");
+
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
@@ -17,15 +19,18 @@ const app = express();
 
 const allowedOrigins = process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL]
-  : ['http://localhost:5173', 'http://localhost:5174'];
+  : ["http://localhost:5173", "http://localhost:5174"];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin))
+        return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
