@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:17
+    build:
+      context: ../Database
     container_name: eventflow_db
     restart: always
     environment:
@@ -11,7 +12,11 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ../Database/1_createdb.sql:/docker-entrypoint-initdb.d/1_createdb.sql
+      - ../Database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../Database/cron.sql:/docker-entrypoint-initdb.d/cron.sql
+    command: >
+      postgres -c shared_preload_libraries=pg_cron
+               -c cron.database_name=${DB_NAME}
 
   api:
     build: ../Backend
