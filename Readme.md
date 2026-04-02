@@ -74,6 +74,7 @@ npm init -y
 npm install express cors dotenv pg swagger-ui-express swagger-jsdoc jsonwebtoken pdfkit nodemailer
 npm install --save-dev jest supertest
 npm install nodemon --save-dev
+npm install @supabase/supabase-js
 ```
 
 ## Frontend
