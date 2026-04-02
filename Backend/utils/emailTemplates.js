@@ -1,24 +1,32 @@
-const QRCode = require('qrcode');
+const QRCode = require("qrcode");
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5174';
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 /* ─── Couleurs calquées sur style.css ─────────────────────────────────────── */
 const C = {
-  bg:      '#07071a',
-  surface: '#0d0d24',
-  card:    '#12122a',
-  border:  'rgba(255,255,255,0.08)',
-  text:    '#f0f2ff',
-  text2:   '#94a3b8',
-  primary: '#7c3aed',
-  accent:  '#06b6d4',
-  ok:      '#10b981',
-  err:     '#ef4444',
-  warn:    '#f59e0b',
-}
+  bg: "#07071a",
+  surface: "#0d0d24",
+  card: "#12122a",
+  border: "rgba(255,255,255,0.08)",
+  text: "#f0f2ff",
+  text2: "#94a3b8",
+  primary: "#7c3aed",
+  accent: "#06b6d4",
+  ok: "#10b981",
+  err: "#ef4444",
+  warn: "#f59e0b",
+};
 
 /* ─── Layout de base ──────────────────────────────────────────────────────── */
-const baseTemplate = ({ title, subtitle, icon, accentColor, ctaLabel, ctaUrl, content }) => `<!DOCTYPE html>
+const baseTemplate = ({
+  title,
+  subtitle,
+  icon,
+  accentColor,
+  ctaLabel,
+  ctaUrl,
+  content,
+}) => `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -101,7 +109,7 @@ const baseTemplate = ({ title, subtitle, icon, accentColor, ctaLabel, ctaUrl, co
   </table>
 
 </body>
-</html>`
+</html>`;
 
 /* ─── Bloc "événement" réutilisable ───────────────────────────────────────── */
 const eventBlock = (eventName, color = C.primary) => `
@@ -111,17 +119,17 @@ const eventBlock = (eventName, color = C.primary) => `
         <span style="font-size:14px;font-weight:700;color:${C.text};">🎟️ ${eventName}</span>
       </td>
     </tr>
-  </table>`
+  </table>`;
 
 /* ─── Templates ───────────────────────────────────────────────────────────── */
 const registerTemplate = (name, eventName) =>
   baseTemplate({
-    icon:        '📬',
+    icon: "📬",
     accentColor: C.warn,
-    title:       'Inscription enregistrée',
-    subtitle:    'Votre demande a bien été reçue',
-    ctaLabel:    'Voir mes inscriptions',
-    ctaUrl:      `${FRONTEND_URL}/dashboard`,
+    title: "Inscription enregistrée",
+    subtitle: "Votre demande a bien été reçue",
+    ctaLabel: "Voir mes inscriptions",
+    ctaUrl: `${FRONTEND_URL}/dashboard`,
     content: `
       <p style="margin:0 0 4px 0;">Bonjour <strong>${name}</strong>,</p>
       <p style="margin:0 0 16px 0;color:${C.text2};">Votre demande d'inscription à l'événement suivant a bien été enregistrée :</p>
@@ -135,16 +143,22 @@ const registerTemplate = (name, eventName) =>
       </table>
       <p style="margin:16px 0 0 0;font-size:13px;color:${C.text2};">Vous serez notifié par email dès que votre inscription sera traitée.</p>
     `,
-  })
+  });
 
 const statusTemplate = async (name, eventName, status, eventId) => {
-  const confirmed = status === 'confirmed'
-  let qrBlock = ''
-  let attachments = []
+  const confirmed = status === "confirmed";
+  let qrBlock = "";
+  let attachments = [];
   if (confirmed && eventId) {
-    const qrUrl = `${FRONTEND_URL}/events/${eventId}`
-    const qrBuffer = await QRCode.toBuffer(qrUrl, { width: 200, margin: 1, color: { dark: '#f0f2ff', light: '#0d0d24' } })
-    attachments = [{ filename: 'qrcode.png', content: qrBuffer, cid: 'qrcode@eventflow' }]
+    const qrUrl = `${FRONTEND_URL}/events/${eventId}`;
+    const qrBuffer = await QRCode.toBuffer(qrUrl, {
+      width: 200,
+      margin: 1,
+      color: { dark: "#f0f2ff", light: "#0d0d24" },
+    });
+    attachments = [
+      { filename: "qrcode.png", content: qrBuffer, cid: "qrcode@eventflow" },
+    ];
     qrBlock = `
       <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0 0;">
         <tr>
@@ -154,50 +168,56 @@ const statusTemplate = async (name, eventName, status, eventId) => {
             <p style="margin:10px 0 0 0;font-size:11px;color:${C.text2};">Présentez ce QR code à l'entrée</p>
           </td>
         </tr>
-      </table>`
+      </table>`;
   }
-  return { html: baseTemplate({
-    icon:        confirmed ? '✅' : '❌',
-    accentColor: confirmed ? C.ok : C.err,
-    title:       confirmed ? 'Inscription validée !' : 'Inscription refusée',
-    subtitle:    confirmed ? 'Bonne nouvelle, vous êtes confirmé(e)' : 'L\'organisateur n\'a pas pu vous accepter',
-    ctaLabel:    confirmed ? 'Voir l\'événement' : 'Découvrir d\'autres événements',
-    ctaUrl:      `${FRONTEND_URL}/events`,
-    content: `
+  return {
+    html: baseTemplate({
+      icon: confirmed ? "✅" : "❌",
+      accentColor: confirmed ? C.ok : C.err,
+      title: confirmed ? "Inscription validée !" : "Inscription refusée",
+      subtitle: confirmed
+        ? "Bonne nouvelle, vous êtes confirmé(e)"
+        : "L'organisateur n'a pas pu vous accepter",
+      ctaLabel: confirmed
+        ? "Voir l'événement"
+        : "Découvrir d'autres événements",
+      ctaUrl: `${FRONTEND_URL}/events`,
+      content: `
       <p style="margin:0 0 4px 0;">Bonjour <strong>${name}</strong>,</p>
-      <p style="margin:0 0 16px 0;color:${C.text2};">Votre inscription à l'événement suivant a été <strong>${confirmed ? 'validée' : 'refusée'}</strong> :</p>
+      <p style="margin:0 0 16px 0;color:${C.text2};">Votre inscription à l'événement suivant a été <strong>${confirmed ? "validée" : "refusée"}</strong> :</p>
       ${eventBlock(eventName, confirmed ? C.ok : C.err)}
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="background:${confirmed ? C.ok : C.err}15;border:1px solid ${confirmed ? C.ok : C.err}30;border-radius:8px;padding:12px 16px;">
-            <span style="font-size:13px;color:${confirmed ? C.ok : C.err};font-weight:600;">${confirmed ? '✅ Votre place est confirmée. À bientôt !' : '❌ Votre demande n\'a pas été retenue cette fois.'}</span>
+            <span style="font-size:13px;color:${confirmed ? C.ok : C.err};font-weight:600;">${confirmed ? "✅ Votre place est confirmée. À bientôt !" : "❌ Votre demande n'a pas été retenue cette fois."}</span>
           </td>
         </tr>
       </table>
       ${qrBlock}
     `,
-  }), attachments }
-}
+    }),
+    attachments,
+  };
+};
 
 const cancelTemplate = (name, eventName) =>
   baseTemplate({
-    icon:        '🚫',
+    icon: "🚫",
     accentColor: C.err,
-    title:       'Inscription annulée',
-    subtitle:    'Votre désinscription a bien été prise en compte',
-    ctaLabel:    'Découvrir d\'autres événements',
-    ctaUrl:      `${FRONTEND_URL}/events`,
+    title: "Inscription annulée",
+    subtitle: "Votre désinscription a bien été prise en compte",
+    ctaLabel: "Découvrir d'autres événements",
+    ctaUrl: `${FRONTEND_URL}/events`,
     content: `
       <p style="margin:0 0 4px 0;">Bonjour <strong>${name}</strong>,</p>
       <p style="margin:0 0 16px 0;color:${C.text2};">Votre inscription à l'événement suivant a été annulée :</p>
       ${eventBlock(eventName, C.err)}
       <p style="margin:0;font-size:13px;color:${C.text2};">D'autres événements vous attendent sur la plateforme.</p>
     `,
-  })
+  });
 
 module.exports = {
   registerTemplate,
   statusTemplate,
   cancelTemplate,
-}
-
+};
