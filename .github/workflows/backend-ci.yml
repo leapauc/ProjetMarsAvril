@@ -42,7 +42,7 @@ jobs:
 
       - name: 🗄️ Init database
         run: |
-          psql -h localhost -U postgres -d eventflow_test -f Database/1_createdb.sql
+          psql -h localhost -U postgres -d eventflow_test -f Database/init.sql
         env:
           PGPASSWORD: postgres
 
