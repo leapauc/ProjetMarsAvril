@@ -1,5 +1,7 @@
 const QRCode = require('qrcode');
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5174';
+
 /* ─── Couleurs calquées sur style.css ─────────────────────────────────────── */
 const C = {
   bg:      '#07071a',
@@ -119,7 +121,7 @@ const registerTemplate = (name, eventName) =>
     title:       'Inscription enregistrée',
     subtitle:    'Votre demande a bien été reçue',
     ctaLabel:    'Voir mes inscriptions',
-    ctaUrl:      'http://localhost:5174/dashboard',
+    ctaUrl:      `${FRONTEND_URL}/dashboard`,
     content: `
       <p style="margin:0 0 4px 0;">Bonjour <strong>${name}</strong>,</p>
       <p style="margin:0 0 16px 0;color:${C.text2};">Votre demande d'inscription à l'événement suivant a bien été enregistrée :</p>
@@ -140,7 +142,7 @@ const statusTemplate = async (name, eventName, status, eventId) => {
   let qrBlock = ''
   let attachments = []
   if (confirmed && eventId) {
-    const qrUrl = `http://localhost:5174/events/${eventId}`
+    const qrUrl = `${FRONTEND_URL}/events/${eventId}`
     const qrBuffer = await QRCode.toBuffer(qrUrl, { width: 200, margin: 1, color: { dark: '#f0f2ff', light: '#0d0d24' } })
     attachments = [{ filename: 'qrcode.png', content: qrBuffer, cid: 'qrcode@eventflow' }]
     qrBlock = `
@@ -160,7 +162,7 @@ const statusTemplate = async (name, eventName, status, eventId) => {
     title:       confirmed ? 'Inscription validée !' : 'Inscription refusée',
     subtitle:    confirmed ? 'Bonne nouvelle, vous êtes confirmé(e)' : 'L\'organisateur n\'a pas pu vous accepter',
     ctaLabel:    confirmed ? 'Voir l\'événement' : 'Découvrir d\'autres événements',
-    ctaUrl:      'http://localhost:5174/events',
+    ctaUrl:      `${FRONTEND_URL}/events`,
     content: `
       <p style="margin:0 0 4px 0;">Bonjour <strong>${name}</strong>,</p>
       <p style="margin:0 0 16px 0;color:${C.text2};">Votre inscription à l'événement suivant a été <strong>${confirmed ? 'validée' : 'refusée'}</strong> :</p>
@@ -184,7 +186,7 @@ const cancelTemplate = (name, eventName) =>
     title:       'Inscription annulée',
     subtitle:    'Votre désinscription a bien été prise en compte',
     ctaLabel:    'Découvrir d\'autres événements',
-    ctaUrl:      'http://localhost:5174/events',
+    ctaUrl:      `${FRONTEND_URL}/events`,
     content: `
       <p style="margin:0 0 4px 0;">Bonjour <strong>${name}</strong>,</p>
       <p style="margin:0 0 16px 0;color:${C.text2};">Votre inscription à l'événement suivant a été annulée :</p>
