@@ -244,7 +244,12 @@ router.get("/:id", getEventById);
  *       500:
  *         description: Erreur serveur
  */
-router.post("/", authenticateToken, authorizeRoles("ORGANIZER"), createEvent);
+router.post(
+  "/",
+  authenticateToken,
+  authorizeRoles("ORGANIZER", "ADMIN"),
+  createEvent,
+);
 
 /**
  * @swagger
@@ -303,7 +308,12 @@ router.post("/", authenticateToken, authorizeRoles("ORGANIZER"), createEvent);
  *       500:
  *         description: Erreur serveur
  */
-router.put("/:id", authenticateToken, authorizeRoles("ORGANIZER"), updateEvent);
+router.put(
+  "/:id",
+  authenticateToken,
+  authorizeRoles("ORGANIZER", "ADMIN"),
+  updateEvent,
+);
 
 /**
  * @swagger

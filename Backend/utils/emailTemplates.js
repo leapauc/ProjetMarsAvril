@@ -145,6 +145,53 @@ const registerTemplate = (name, eventName) =>
     `,
   });
 
+const organizerTemplate = (organizerName, userName, eventTitle) =>
+  baseTemplate({
+    icon: "📥",
+    accentColor: C.accent,
+    title: "Nouvelle demande d'inscription",
+    subtitle: "Un participant souhaite rejoindre votre événement",
+    ctaLabel: "Gérer les inscriptions",
+    ctaUrl: `${FRONTEND_URL}/dashboard/events`,
+    content: `
+      <p style="margin:0 0 4px 0;">Bonjour <strong>${organizerName}</strong>,</p>
+      <p style="margin:0 0 16px 0;color:${C.text2};">
+        Une nouvelle demande d'inscription vient d'être soumise pour votre événement :
+      </p>
+
+      ${eventBlock(eventTitle, C.accent)}
+
+      <!-- Bloc participant -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+        <tr>
+          <td style="background:${C.accent}12;border:1px solid ${C.accent}30;border-radius:8px;padding:14px 16px;">
+            <span style="font-size:13px;color:${C.text2};display:block;margin-bottom:6px;">
+              👤 Nouveau participant
+            </span>
+            <span style="font-size:15px;font-weight:700;color:${C.text};">
+              ${userName}
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Alerte action -->
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="background:${C.warn}12;border:1px solid ${C.warn}30;border-radius:8px;padding:12px 16px;">
+            <span style="font-size:13px;color:${C.warn};font-weight:600;">
+              ⚡ Action requise : validez ou refusez cette inscription
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:16px 0 0 0;font-size:13px;color:${C.text2};">
+        Gérez facilement vos participants depuis votre tableau de bord.
+      </p>
+    `,
+  });
+
 const statusTemplate = async (name, eventName, status, eventId) => {
   const confirmed = status === "confirmed";
   let qrBlock = "";
@@ -220,4 +267,5 @@ module.exports = {
   registerTemplate,
   statusTemplate,
   cancelTemplate,
+  organizerTemplate,
 };

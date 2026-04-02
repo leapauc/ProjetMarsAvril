@@ -158,7 +158,7 @@ router.get("/:id", getRegistrationById);
  * @swagger
  * /registration/{id}/register:
  *   post:
- *     summary: Inscrire un utilisateur à un événement
+ *     summary: Inscrire un utilisateur à un événement. Envoie un mail denotification à l'organisateur et à l'utilisateur qui demande une inscription.
  *     tags: [Registrations]
  *     security:
  *       - bearerAuth: []

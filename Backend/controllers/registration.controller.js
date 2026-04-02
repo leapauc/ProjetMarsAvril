@@ -6,6 +6,7 @@ const {
   registerTemplate,
   statusTemplate,
   cancelTemplate,
+  organizerTemplate,
 } = require("../utils/emailTemplates");
 
 // GET /:id/registrations -> récupérer les inscriptions d’un utilisateur ou d’un événement
@@ -67,8 +68,10 @@ exports.registerToEvent = async (req, res) => {
     const id_event = req.params.id;
     const { id_user } = req.body;
 
+    // Vérifier que l'événement existe et est publié
     const eventQuery = await pool.query(
-      "SELECT * FROM events WHERE id_event=$1 AND is_published=TRUE",
+      `SELECT * FROM events 
+       WHERE id_event = $1 AND is_published = TRUE`,
       [id_event],
     );
 
@@ -78,8 +81,12 @@ exports.registerToEvent = async (req, res) => {
         .json({ message: "Événement non trouvé ou non publié" });
     }
 
+    const event = eventQuery.rows[0];
+
+    // Vérifier si déjà inscrit
     const existing = await pool.query(
-      "SELECT 1 FROM registrations WHERE id_user=$1 AND id_event=$2",
+      `SELECT 1 FROM registrations 
+       WHERE id_user = $1 AND id_event = $2`,
       [id_user, id_event],
     );
 
@@ -87,37 +94,63 @@ exports.registerToEvent = async (req, res) => {
       return res.status(400).json({ message: "Déjà inscrit" });
     }
 
+    // Vérifier capacité max
     const count = await pool.query(
-      "SELECT COUNT(*) FROM registrations WHERE id_event=$1",
+      `SELECT COUNT(*) FROM registrations WHERE id_event = $1`,
       [id_event],
     );
 
-    if (+count.rows[0].count >= eventQuery.rows[0].max_participants) {
+    if (+count.rows[0].count >= event.max_participants) {
       return res.status(400).json({ message: "Événement complet" });
     }
 
+    // Inscription
     const insert = await pool.query(
       `INSERT INTO registrations (id_user, id_event)
-       VALUES ($1,$2) RETURNING *`,
+       VALUES ($1, $2)
+       RETURNING *`,
       [id_user, id_event],
     );
 
+    // Log action
     await logUserAction(id_user, id_user, "event_registration", id_event);
 
-    // JOIN user
+    // Récupérer infos utilisateur
     const userData = await pool.query(
-      `SELECT email, firstname FROM users WHERE id_user=$1`,
+      `SELECT email, firstname FROM users WHERE id_user = $1`,
       [id_user],
     );
 
     const user = userData.rows[0];
 
+    // Récupérer organisateur
+    const organizerData = await pool.query(
+      `SELECT u.email, u.firstname
+       FROM users u
+       JOIN events e ON e.id_orga = u.id_user
+       WHERE e.id_event = $1`,
+      [id_event],
+    );
+
+    const organizer = organizerData.rows[0];
+
+    // Email utilisateur
     await sendEmail(
       user.email,
       "Inscription en attente",
-      `Inscription à ${eventQuery.rows[0].title}`,
-      registerTemplate(user.firstname, eventQuery.rows[0].title),
+      `Inscription à ${event.title}`,
+      registerTemplate(user.firstname, event.title),
     );
+
+    // Email organisateur
+    if (organizer) {
+      await sendEmail(
+        organizer.email,
+        "Nouvelle demande d'inscription",
+        `Nouvelle inscription pour ${event.title}`,
+        organizerTemplate(organizer.firstname, user.firstname, event.title),
+      );
+    }
 
     res.status(201).json(insert.rows[0]);
   } catch (err) {
@@ -165,7 +198,8 @@ exports.updateRegistrationStatus = async (req, res) => {
       id_event,
     );
 
-    const { html: statusHtml, attachments: statusAttachments } = await statusTemplate(firstname, title, status, id_event);
+    const { html: statusHtml, attachments: statusAttachments } =
+      await statusTemplate(firstname, title, status, id_event);
     await sendEmail(
       email,
       status === "confirmed" ? "Inscription validée" : "Inscription refusée",
