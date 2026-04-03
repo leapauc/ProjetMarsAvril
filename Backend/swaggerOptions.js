@@ -4,7 +4,7 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "API - NEW QCM+",
+      title: "API - Eventflow",
       version: "1.0.0",
       description: "Documentation automatique de cette API.",
     },
