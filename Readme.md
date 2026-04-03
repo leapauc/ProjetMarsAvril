@@ -67,15 +67,30 @@ docker volume rm docker_pgdata
 
 ## Backend
 
+Le backend a été développé en NodeJS.
+
 ### Prérequis
 
-Installation à prévoir :
+Pour installer les dépendances :
+
+```
+npm install
+```
+
+Dépendance installer :
 
 ```
 npm init -y
 npm install express cors dotenv pg swagger-ui-express swagger-jsdoc jsonwebtoken pdfkit nodemailer node-cron
 npm install --save-dev jest supertest
-npm install nodemon --save-dev
+```
+
+## Lancement API
+
+Pour lancer l'API, il suffit de lancer la commande suivante :
+
+```
+npm start
 ```
 
 ### Documentation API
@@ -85,9 +100,27 @@ Documentation disponible à l'url suivante :
 
 ## Frontend
 
+Le Frontend a été développé en VueJS.
+
 ### Prérequis
+
+Pour installer les dépendances :
+
+```
+npm install
+```
+
+Dépendance installer :
 
 ```
 npm install vue@^3.5.13 vue-router@^4.5.0 pinia@^2.3.1 axios@^1.9.0 leaflet@^1.9.4
 npm install --save-dev vite@^6.3.5 @vitejs/plugin-vue@^5.2.1
+```
+
+## Lancement de l'application
+
+Pour lancer l'API, il suffit de lancer la commande suivante :
+
+```
+npm run dev
 ```
