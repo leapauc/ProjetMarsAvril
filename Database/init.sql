@@ -71,7 +71,15 @@ VALUES
 ('Afterwork Tech', 'Networking IT', '2026-07-18 19:00:00', 'Nantes', 40, 11, TRUE, NOW()),
 ('Bootcamp Backend', 'Formation intensive backend', '2026-08-01 09:00:00', 'Paris', 20, 3, TRUE, NOW()),
 ('Conférence Cloud', 'Cloud computing', '2026-11-15 10:00:00', 'Nice', 60, 6, TRUE, NOW());
-
+-- ÉVÉNEMENTS INTERNATIONAUX
+INSERT INTO events
+(title, description, event_date, location, max_participants, id_orga, is_published, created_at)
+VALUES
+('Tech Summit Chicago', 'International tech conference in Chicago', '2026-07-20 09:00:00', 'Chicago', 150, 3, TRUE, NOW()),
+('London Dev Meetup', 'Meetup for developers in London', '2026-08-15 18:00:00', 'Londres', 80, 6, TRUE, NOW()),
+('Berlin AI Workshop', 'Hands-on AI workshop in Berlin', '2026-09-10 10:00:00', 'Berlin', 50, 9, TRUE, NOW()),
+('Tokyo Startup Conference', 'Startup networking event in Tokyo', '2026-10-05 09:00:00', 'Tokyo', 200, 11, TRUE, NOW()),
+('New York Cloud Expo', 'Cloud computing expo in New York', '2026-11-12 10:00:00', 'New York', 180, 3, TRUE, NOW());
 ---------------------------------------------------------
 -- CREATE AND FILL TABLE REGISTRATIONS
 ---------------------------------------------------------
