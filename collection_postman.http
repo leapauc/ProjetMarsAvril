@@ -1,0 +1,304 @@
+# EventFlow API Collection (HTTP client format)
+# Variables provided by the active Postman / environment or VS Code REST Client:
+# {{baseUrl}} = http://localhost:3003
+# {{userToken}} = token JWT USER
+# {{orgaToken}} = token JWT ORGANIZER
+# {{adminToken}} = token JWT ADMIN
+# {{createdUserId}} = id_user created in the user CREATE test
+# {{testEventId}} = id_event created or existing
+# {{registrationId}} = id returned by /api/registrations/:id/register
+
+@baseUrl = http://localhost:3003
+
+### Auth - Register USER
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser1@mail.com",
+  "password": "Password123",
+  "firstname": "Test",
+  "lastname": "User",
+  "phone": "0601020304",
+  "role": "USER",
+  "consentVersion": "1.0"
+}
+
+### Auth - Login ADMIN
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@eventflow.com",
+  "password": "admin123"
+}
+
+### Auth - Login USER
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@eventflow.com",
+  "password": "Password123"
+}
+
+### Auth - Login ORGANIZER
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "orga@eventflow.com",
+  "password": "Password123"
+}
+
+### Auth - Login invalid credentials (401)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@mail.com",
+  "password": "wrongpassword"
+}
+
+### Events - GET all published events
+GET {{baseUrl}}/api/event
+Accept: application/json
+
+### Events - GET admin all events (ADMIN token only)
+GET {{baseUrl}}/api/event/all
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Events - GET event by id
+GET {{baseUrl}}/api/event/{{testEventId}}
+Accept: application/json
+
+### Events - Create event (ORGANIZER/ADMIN)
+POST {{baseUrl}}/api/event
+Authorization: Bearer {{orgaToken}}
+Content-Type: application/json
+
+{
+  "title": "Nouvel atelier",
+  "description": "Atelier technique de démonstration",
+  "event_date": "2026-09-15T10:00:00Z",
+  "duration": 120,
+  "location": "Paris",
+  "max_participants": 50,
+  "id_orga": 3,
+  "is_published": true
+}
+
+### Events - Update event by id
+PUT {{baseUrl}}/api/event/{{testEventId}}
+Authorization: Bearer {{orgaToken}}
+Content-Type: application/json
+
+{
+  "title": "Atelier mis à jour",
+  "description": "Atelier technique mise à jour",
+  "event_date": "2026-09-15T10:00:00Z",
+  "duration": 120,
+  "location": "Paris",
+  "max_participants": 50,
+  "is_published": true
+}
+
+### Events - Delete event by id
+DELETE {{baseUrl}}/api/event/{{testEventId}}
+Authorization: Bearer {{orgaToken}}
+Accept: application/json
+
+### Users - GET all users - no token (401)
+GET {{baseUrl}}/api/user
+Accept: application/json
+
+### Users - GET all users - USER token (403)
+GET {{baseUrl}}/api/user
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Users - GET all users - ADMIN token (200)
+GET {{baseUrl}}/api/user
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Users - POST create user - ADMIN token (201)
+POST {{baseUrl}}/api/user
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "testuser1@mail.com",
+  "password": "Password123",
+  "firstname": "Test",
+  "lastname": "User",
+  "phone": "0601020304",
+  "role": "USER",
+  "consentVersion": "1.0"
+}
+
+### Users - POST create user duplicate email (400)
+POST {{baseUrl}}/api/user
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "testuser1@mail.com",
+  "password": "Password123",
+  "firstname": "Test",
+  "lastname": "User"
+}
+
+### Users - GET user by id - ADMIN token (200)
+GET {{baseUrl}}/api/user/{{createdUserId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Users - GET user by id - not found (404)
+GET {{baseUrl}}/api/user/999999
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Users - PUT user by id - ADMIN token (200)
+PUT {{baseUrl}}/api/user/{{createdUserId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "Updated",
+  "lastname": "User",
+  "phone": "0708091011",
+  "role": "ADMIN"
+}
+
+### Users - PUT user by id - not found (404)
+PUT {{baseUrl}}/api/user/999999
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "firstname": "X"
+}
+
+### Users - DELETE user by id - ADMIN token (200)
+DELETE {{baseUrl}}/api/user/{{createdUserId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Users - DELETE user by id - not found (404)
+DELETE {{baseUrl}}/api/user/999999
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Me - GET personal data
+GET {{baseUrl}}/api/me/1
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Me - GET personal JSON export
+GET {{baseUrl}}/api/me/1/export
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Me - GET personal PDF export
+GET {{baseUrl}}/api/me/1/export/pdf
+Authorization: Bearer {{userToken}}
+Accept: application/pdf
+
+### Me - PUT personal data
+PUT {{baseUrl}}/api/me/1
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "firstname": "Alice",
+  "lastname": "Dupont",
+  "phone": "0600000002"
+}
+
+### Me - DELETE personal data (RGPD)
+DELETE {{baseUrl}}/api/me/1
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Registrations - GET user registrations - no token (401)
+GET {{baseUrl}}/api/registrations/1
+Accept: application/json
+
+### Registrations - GET user registrations - USER token (200)
+GET {{baseUrl}}/api/registrations/1
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Registrations - GET user registrations - non trouvé (404)
+GET {{baseUrl}}/api/registrations/999999
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Registrations - GET organizer registrations - ORGA token (200)
+GET {{baseUrl}}/api/registrations/orga/3/event
+Authorization: Bearer {{orgaToken}}
+Accept: application/json
+
+### Registrations - POST register for event - USER token (201 ou 400 si déjà inscrit)
+POST {{baseUrl}}/api/registrations/{{testEventId}}/register
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "id_user": 1
+}
+
+### Registrations - POST register for non-existent event - 404
+POST {{baseUrl}}/api/registrations/999999/register
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "id_user": 1
+}
+
+### Registrations - PATCH registration status - organizer/admin
+PATCH {{baseUrl}}/api/registrations/{{registrationId}}/status
+Authorization: Bearer {{orgaToken}}
+Content-Type: application/json
+
+{
+  "status": "confirmed"
+}
+
+### Registrations - DELETE registration - USER token (200)
+DELETE {{baseUrl}}/api/registrations/{{registrationId}}
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Registrations - DELETE non-existent registration - 404
+DELETE {{baseUrl}}/api/registrations/999999
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### Consent - POST consent
+POST {{baseUrl}}/api/consent
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "consentVersion": "1.0",
+  "accepted": true
+}
+
+### History - GET current user history
+GET {{baseUrl}}/api/history/me
+Authorization: Bearer {{userToken}}
+Accept: application/json
+
+### History - GET full history - admin only
+GET {{baseUrl}}/api/history
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Stats - GET stats
+GET {{baseUrl}}/api/stats
+Authorization: Bearer {{adminToken}}
+Accept: application/json
