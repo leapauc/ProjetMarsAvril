@@ -115,6 +115,7 @@ exports.createEvent = async (req, res) => {
 exports.updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
+
     const {
       title,
       description,
@@ -122,28 +123,43 @@ exports.updateEvent = async (req, res) => {
       location,
       max_participants,
       is_published,
+      duration,
       id_orga,
     } = req.body;
+
+    // Convertir et sécuriser la durée
+    const safeDuration = Number(duration);
 
     // Vérifier que l'événement existe
     const eventQuery = await pool.query(
       "SELECT * FROM events WHERE id_event = $1",
       [id],
     );
+
     if (eventQuery.rows.length === 0) {
-      return res.status(404).json({ message: "Événement non trouvé" });
+      return res.status(404).json({
+        message: "Événement non trouvé",
+      });
     }
 
-    // Vérifier que l'utilisateur est l'organisateur (id_orga doit matcher)
+    // Vérifier que l'utilisateur est l'organisateur
     if (id_orga && eventQuery.rows[0].id_orga !== id_orga) {
-      return res
-        .status(403)
-        .json({ message: "Vous n’êtes pas l’organisateur de cet événement" });
+      return res.status(403).json({
+        message: "Vous n’êtes pas l’organisateur de cet événement",
+      });
     }
 
     const updateQuery = await pool.query(
-      `UPDATE events SET title=$1, description=$2, event_date=$3, location=$4, max_participants=$5, is_published=$6, duration=$7
-       WHERE id_event=$8 RETURNING *`,
+      `UPDATE events
+       SET title = $1,
+           description = $2,
+           event_date = $3,
+           location = $4,
+           max_participants = $5,
+           is_published = $6,
+           duration = $7
+       WHERE id_event = $8
+       RETURNING *`,
       [
         title,
         description,
@@ -164,12 +180,20 @@ exports.updateEvent = async (req, res) => {
       "Modification des détails de l’événement",
     );
 
-    res.json({ message: "Événement mis à jour", event: updateQuery.rows[0] });
+    return res.status(200).json({
+      message: "Événement mis à jour",
+      event: updateQuery.rows[0],
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Erreur serveur" });
+
+    return res.status(500).json({
+      message: "Erreur serveur",
+    });
   }
 };
+
+
 
 // DELETE /event/:id -> Supprimer un événement
 exports.deleteEvent = async (req, res) => {
