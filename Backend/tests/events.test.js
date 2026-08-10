@@ -94,6 +94,36 @@ describe("Events API Endpoints", () => {
     expect(res.statusCode).toBe(404);
   });
 
+  it("POST /api/registrations/:id/register - refuse une inscription sur un événement passé", async () => {
+    const pastEvent = await pool.query(
+      `INSERT INTO events 
+        (title, description, event_date, location, max_participants, id_orga, is_published, created_at)
+       VALUES ($1, $2, NOW() - interval '1 day', $3, $4, $5, TRUE, NOW())
+       RETURNING id_event`,
+      [randomTitle(), "Événement déjà terminé", "Paris", 10, orgaUserId],
+    );
+
+    const userRes = await pool.query(
+      `INSERT INTO users
+        (email, password, firstname, lastname, role, consent_version, consent_date, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+       RETURNING id_user`,
+      [`past.user.${Date.now()}@mail.com`, "hashedpass", "Past", "User", "USER", "1.0"],
+    );
+
+    const res = await request(app)
+      .post(`/api/registrations/${pastEvent.rows[0].id_event}/register`)
+      .send({ id_user: userRes.rows[0].id_user });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/passé|terminé|ferm/i);
+
+    await pool.query("DELETE FROM registrations WHERE id_user = $1 AND id_event = $2", [userRes.rows[0].id_user, pastEvent.rows[0].id_event]);
+    await pool.query("DELETE FROM user_action_log WHERE related_event = $1", [pastEvent.rows[0].id_event]);
+    await pool.query("DELETE FROM events WHERE id_event = $1", [pastEvent.rows[0].id_event]);
+    await pool.query("DELETE FROM users WHERE id_user = $1", [userRes.rows[0].id_user]);
+  });
+
   // =========================
   // POST /event
   // =========================

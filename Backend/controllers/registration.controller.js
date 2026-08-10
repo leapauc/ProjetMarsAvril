@@ -83,6 +83,14 @@ exports.registerToEvent = async (req, res) => {
 
     const event = eventQuery.rows[0];
 
+    const eventStart = new Date(event.event_date);
+    const now = new Date();
+    if (eventStart.getTime() < now.getTime()) {
+      return res
+        .status(400)
+        .json({ message: "Cet événement est terminé : l'inscription est fermée." });
+    }
+
     // Vérifier si déjà inscrit
     const existing = await pool.query(
       `SELECT 1 FROM registrations 

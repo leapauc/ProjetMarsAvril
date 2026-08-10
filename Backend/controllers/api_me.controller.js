@@ -18,7 +18,7 @@ const getUserWithEvents = async (id) => {
   let events = [];
 
   try {
-    if (user.role === "ORGANIZER") {
+    if (["ORGANIZER", "ADMIN"].includes(user.role)) {
       const eventQuery = await pool.query(
         `SELECT id_event, title, description, event_date, location, max_participants, is_published
          FROM events

@@ -87,113 +87,208 @@
         </RouterLink>
       </div>
 
-      <!-- ORGANIZER : mes événements -->
-      <div v-else-if="auth.isOrganizer && tab === 'events'" class="items-list">
-        <div
-          v-for="(ev, i) in items"
-          :key="ev.id_event"
-          class="item-card card anim-up"
-          :class="`d${Math.min(i + 2, 6)}`"
-        >
-          <div class="item-info">
-            <div class="item-top">
-              <span
-                class="badge"
-                :class="ev.is_published ? 'badge-ok' : 'badge-warn'"
-              >
-                {{ ev.is_published ? "Publié" : "Brouillon" }}
-              </span>
-              <span class="item-date">{{ formatDate(ev.event_date) }}</span>
-            </div>
-            <h3 class="item-title">{{ ev.title }}</h3>
-            <p class="item-meta">
-              📍 {{ ev.location }} · 👥 {{ ev.max_participants }} places
-            </p>
-          </div>
-          <div class="item-actions">
-            <RouterLink
-              :to="`/events/${ev.id_event}`"
-              class="btn btn-ghost btn-sm"
-              >Voir</RouterLink
-            >
-            <RouterLink
-              :to="`/events/${ev.id_event}/edit`"
-              class="btn btn-secondary btn-sm"
-              >Modifier</RouterLink
-            >
-            <button class="btn btn-danger btn-sm" @click="openDeleteModal(ev)">
-              Supprimer
+      <!-- ONGLET "MES ÉVÉNEMENTS" et "MES INSCRIPTIONS" : rendu unifié list / calendrier -->
+      <div v-else-if="tab === 'events'">
+        <div class="view-switch-wrap">
+          <div class="segmented-view">
+            <button class="segment-btn" :class="{ active: registrationView === 'list' }" @click="registrationView = 'list'">
+              Liste
+            </button>
+            <button class="segment-btn" :class="{ active: registrationView === 'calendar' }" @click="registrationView = 'calendar'">
+              Calendrier par mois
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- USER : mes inscriptions -->
-      <div v-else-if="!auth.isOrganizer && tab === 'events'" class="items-list">
-        <div
-          v-for="(reg, i) in items"
-          :key="reg.id"
-          class="item-card card anim-up"
-          :class="`d${Math.min(i + 2, 6)}`"
-        >
-          <div class="item-info">
-            <div class="item-top">
-              <span class="badge" :class="statusClass(reg.status)">{{
-                statusLabel(reg.status)
-              }}</span>
-              <span class="item-date">{{ formatDate(reg.event_date) }}</span>
+        <div v-if="registrationView === 'list'" class="items-list">
+          <div
+            v-if="auth.isOrganizer"
+            v-for="(ev, i) in items"
+            :key="ev.id_event"
+            class="item-card card anim-up"
+            :class="`d${Math.min(i + 2, 6)}`"
+          >
+            <div class="item-info">
+              <div class="item-top">
+                <span
+                  class="badge"
+                  :class="ev.is_published ? 'badge-ok' : 'badge-warn'"
+                >
+                  {{ ev.is_published ? "Publié" : "Brouillon" }}
+                </span>
+                <span class="item-date">{{ formatDate(ev.event_date) }}</span>
+              </div>
+              <h3 class="item-title">{{ ev.title }}</h3>
+              <p class="item-meta">
+                📍 {{ ev.location }} · 👥 {{ ev.max_participants }} places
+              </p>
             </div>
-            <h3 class="item-title">{{ reg.title }}</h3>
-            <p class="item-meta">
-              Inscrit le {{ formatDate(reg.registered_at) }}
-            </p>
+            <div class="item-actions">
+              <RouterLink
+                :to="`/events/${ev.id_event}`"
+                class="btn btn-ghost btn-sm"
+                >Voir</RouterLink
+              >
+              <RouterLink
+                :to="`/events/${ev.id_event}/edit`"
+                class="btn btn-secondary btn-sm"
+                >Modifier</RouterLink
+              >
+              <button class="btn btn-danger btn-sm" @click="openDeleteModal(ev)">
+                Supprimer
+              </button>
+            </div>
           </div>
-          <div class="item-actions">
-            <RouterLink
-              :to="`/events/${reg.id_event}`"
-              class="btn btn-ghost btn-sm"
-              >Voir</RouterLink
-            >
-            <button
-              class="btn btn-danger btn-sm"
-              @click="openCancelModal(reg)"
-              :disabled="reg.status === 'cancelled'"
-            >
-              Annuler
-            </button>
+
+          <div
+            v-else
+            v-for="(reg, i) in items"
+            :key="reg.id"
+            class="item-card card anim-up"
+            :class="`d${Math.min(i + 2, 6)}`"
+          >
+            <div class="item-info">
+              <div class="item-top">
+                <span class="badge" :class="statusClass(reg.status)">{{
+                  statusLabel(reg.status)
+                }}</span>
+                <span class="item-date">{{ formatDate(reg.event_date) }}</span>
+              </div>
+              <h3 class="item-title">{{ reg.title }}</h3>
+              <p class="item-meta">
+                Inscrit le {{ formatDate(reg.registered_at) }}
+              </p>
+            </div>
+            <div class="item-actions">
+              <RouterLink
+                :to="`/events/${reg.id_event}`"
+                class="btn btn-ghost btn-sm"
+                >Voir</RouterLink
+              >
+              <button
+                class="btn btn-danger btn-sm"
+                @click="openCancelModal(reg)"
+                :disabled="reg.status === 'cancelled'"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="calendar-view card anim-up d2">
+          <div class="calendar-top">
+            <button class="icon-btn" @click="monthShift(-1)">‹</button>
+            <h3 class="calendar-title">{{ monthTitle }}</h3>
+            <button class="icon-btn" @click="monthShift(1)">›</button>
+          </div>
+          <div class="calendar-weekdays">
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mer</span>
+            <span>Jeu</span>
+            <span>Ven</span>
+            <span>Sam</span>
+            <span>Dim</span>
+          </div>
+          <div class="calendar-grid">
+            <div v-for="day in calendarDays" :key="day.key" class="calendar-cell" :class="{ 'is-empty': day.isEmpty }">
+              <div class="calendar-cell-head">
+                <span>{{ day.date }}</span>
+              </div>
+              <div class="calendar-cell-events">
+                <RouterLink
+                  v-for="ev in day.events"
+                  :key="`${ev.id_event}-${ev.event_date}`"
+                  :to="`/events/${ev.id_event}`"
+                  class="calendar-event"
+                >
+                  <span>{{ ev.title }}</span>
+                  <small>{{ new Date(ev.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }}</small>
+                </RouterLink>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- ORGANIZER : mes inscriptions en tant que participant -->
-      <div v-if="auth.isOrganizer && tab === 'myregs'" class="items-list anim-up d2">
-        <div v-if="!myRegs.length" class="empty-state">
-          <div class="empty-icon">🎟️</div>
-          <h3>Aucune inscription</h3>
-          <p>Explorez les événements disponibles.</p>
-          <RouterLink to="/events" class="btn btn-primary" style="margin-top:16px">Voir les événements</RouterLink>
-        </div>
-        <div
-          v-for="(reg, i) in myRegs"
-          :key="reg.id"
-          class="item-card card anim-up"
-          :class="`d${Math.min(i + 2, 6)}`"
-        >
-          <div class="item-info">
-            <div class="item-top">
-              <span class="badge" :class="statusClass(reg.status)">{{ statusLabel(reg.status) }}</span>
-              <span class="item-date">{{ formatDate(reg.event_date) }}</span>
-            </div>
-            <h3 class="item-title">{{ reg.title }}</h3>
-            <p class="item-meta">Inscrit le {{ formatDate(reg.registered_at) }}</p>
+      <div v-else-if="auth.isOrganizer && tab === 'myregs'">
+        <div class="view-switch-wrap">
+          <div class="segmented-view">
+            <button class="segment-btn" :class="{ active: registrationView === 'list' }" @click="registrationView = 'list'">
+              Liste
+            </button>
+            <button class="segment-btn" :class="{ active: registrationView === 'calendar' }" @click="registrationView = 'calendar'">
+              Calendrier par mois
+            </button>
           </div>
-          <div class="item-actions">
-            <RouterLink :to="`/events/${reg.id_event}`" class="btn btn-ghost btn-sm">Voir</RouterLink>
-            <button
-              class="btn btn-danger btn-sm"
-              @click="openCancelOrgaRegModal(reg)"
-              :disabled="reg.status === 'cancelled'"
-            >Annuler</button>
+        </div>
+
+        <div v-if="registrationView === 'list'" class="items-list anim-up d2">
+          <div v-if="!myRegs.length" class="empty-state">
+            <div class="empty-icon">🎟️</div>
+            <h3>Aucune inscription</h3>
+            <p>Explorez les événements disponibles.</p>
+            <RouterLink to="/events" class="btn btn-primary" style="margin-top:16px">Voir les événements</RouterLink>
+          </div>
+          <div
+            v-for="(reg, i) in myRegs"
+            :key="reg.id"
+            class="item-card card anim-up"
+            :class="`d${Math.min(i + 2, 6)}`"
+          >
+            <div class="item-info">
+              <div class="item-top">
+                <span class="badge" :class="statusClass(reg.status)">{{ statusLabel(reg.status) }}</span>
+                <span class="item-date">{{ formatDate(reg.event_date) }}</span>
+              </div>
+              <h3 class="item-title">{{ reg.title }}</h3>
+              <p class="item-meta">Inscrit le {{ formatDate(reg.registered_at) }}</p>
+            </div>
+            <div class="item-actions">
+              <RouterLink :to="`/events/${reg.id_event}`" class="btn btn-ghost btn-sm">Voir</RouterLink>
+              <button
+                class="btn btn-danger btn-sm"
+                @click="openCancelOrgaRegModal(reg)"
+                :disabled="reg.status === 'cancelled'"
+              >Annuler</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="calendar-view card anim-up d2">
+          <div class="calendar-top">
+            <button class="icon-btn" @click="monthShift(-1)">‹</button>
+            <h3 class="calendar-title">{{ monthTitle }}</h3>
+            <button class="icon-btn" @click="monthShift(1)">›</button>
+          </div>
+          <div class="calendar-weekdays">
+            <span>Lun</span>
+            <span>Mar</span>
+            <span>Mer</span>
+            <span>Jeu</span>
+            <span>Ven</span>
+            <span>Sam</span>
+            <span>Dim</span>
+          </div>
+          <div class="calendar-grid">
+            <div v-for="day in calendarDays" :key="day.key" class="calendar-cell" :class="{ 'is-empty': day.isEmpty }">
+              <div class="calendar-cell-head">
+                <span>{{ day.date }}</span>
+              </div>
+              <div class="calendar-cell-events">
+                <RouterLink
+                  v-for="ev in day.events"
+                  :key="`${ev.id_event}-${ev.event_date}`"
+                  :to="`/events/${ev.id_event}`"
+                  class="calendar-event"
+                >
+                  <span>{{ ev.title }}</span>
+                  <small>{{ new Date(ev.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }}</small>
+                </RouterLink>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -285,6 +380,8 @@ const validations = ref([]);
 const myRegs = ref([]);
 const loading = ref(true);
 const tab = ref("events");
+const registrationView = ref("list");
+const calendarCursor = ref(new Date());
 
 // ── Modal & Toast ──────────────────────────────────────────────────────────
 const modal = ref({ show: false, title: "", message: "", btnLabel: "Confirmer", btnClass: "btn-danger", pending: null });
@@ -302,6 +399,53 @@ function confirmModal() {
 
 // ── Computed ────────────────────────────────────────────────────────────────
 const pendingCount = computed(() => validations.value.filter((r) => r.status === "pending").length);
+
+const monthTitle = computed(() => {
+  return new Date(calendarCursor.value.getFullYear(), calendarCursor.value.getMonth(), 1).toLocaleDateString("fr-FR", {
+    month: "long",
+    year: "numeric",
+  });
+});
+
+const activeCalendarItems = computed(() => {
+  if (tab.value === 'myregs' && auth.isOrganizer) {
+    return myRegs.value;
+  }
+  return items.value;
+});
+
+const calendarDays = computed(() => {
+  const year = calendarCursor.value.getFullYear();
+  const month = calendarCursor.value.getMonth();
+  const start = new Date(year, month, 1);
+  const firstWeekDay = (start.getDay() + 6) % 7;
+  const startGrid = new Date(year, month, 1 - firstWeekDay);
+  const days = [];
+
+  const source = activeCalendarItems.value;
+
+  for (let i = 0; i < 42; i += 1) {
+    const d = new Date(startGrid.getFullYear(), startGrid.getMonth(), startGrid.getDate() + i);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const events = source.filter((ev) => {
+      const evDate = new Date(ev.event_date);
+      return (
+        evDate.getFullYear() === d.getFullYear() &&
+        evDate.getMonth() === d.getMonth() &&
+        evDate.getDate() === d.getDate()
+      );
+    });
+
+    days.push({
+      key,
+      date: d.getDate(),
+      isEmpty: d.getMonth() !== month,
+      events,
+    });
+  }
+
+  return days;
+});
 
 const initials = computed(() => {
   const u = auth.user;
@@ -359,6 +503,10 @@ onMounted(async () => {
     } else {
       const { data } = await api.get(`/registrations/${auth.user.id_user}`);
       items.value = Array.isArray(data) ? data : [];
+      if (items.value.length) {
+        const first = new Date(items.value[0].event_date);
+        calendarCursor.value = new Date(first.getFullYear(), first.getMonth(), 1);
+      }
     }
   } catch (e) {
     items.value = [];
@@ -366,6 +514,12 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+function monthShift(value) {
+  const next = new Date(calendarCursor.value);
+  next.setMonth(next.getMonth() + value);
+  calendarCursor.value = next;
+}
 
 // ── Modal openers ────────────────────────────────────────────────────────────
 function openDeleteModal(ev) {
@@ -543,6 +697,109 @@ async function doUpdateStatus(reg, status) {
   font-weight: 700;
 }
 
+.view-switch-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.segmented-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--c-card);
+  border: 1px solid var(--c-border);
+}
+.segment-btn {
+  border: none;
+  background: transparent;
+  color: var(--c-text-2);
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.segment-btn.active {
+  background: var(--c-primary);
+  color: white;
+}
+
+.calendar-view {
+  padding: 20px;
+}
+.calendar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.calendar-title {
+  font-size: 18px;
+  margin: 0;
+}
+.icon-btn {
+  border: 1px solid var(--c-border);
+  background: var(--c-card);
+  color: var(--c-text);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(52px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  text-align: center;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(52px, 1fr));
+  gap: 8px;
+}
+.calendar-cell {
+  min-height: 104px;
+  background: var(--c-card);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  padding: 8px;
+}
+.calendar-cell.is-empty {
+  opacity: 0.45;
+}
+.calendar-cell-head {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--c-text-2);
+}
+.calendar-cell-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.calendar-event {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--c-primary-lite);
+  border-left: 3px solid var(--c-primary);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--c-text);
+  font-size: 11px;
+  line-height: 1.2;
+}
+.calendar-event small {
+  color: var(--c-text-2);
+}
 .items-list {
   display: flex;
   flex-direction: column;

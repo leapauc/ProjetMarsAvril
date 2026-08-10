@@ -85,16 +85,19 @@
                 <button
                   class="btn btn-primary btn-block"
                   @click="register"
-                  :disabled="registering || event.remaining_spots === 0"
+                  :disabled="registering || event.remaining_spots === 0 || isPastEvent"
                 >
                   {{
                     registering
                       ? "Inscription…"
-                      : event.remaining_spots === 0
-                        ? "Complet"
-                        : "S'inscrire à l'événement"
+                      : isPastEvent
+                        ? "Événement passé"
+                        : event.remaining_spots === 0
+                          ? "Complet"
+                          : "S'inscrire à l'événement"
                   }}
                 </button>
+                <p v-if="isPastEvent" class="aside-hint">Les inscriptions sont fermées pour cet événement.</p>
               </template>
 
               <div
@@ -247,6 +250,13 @@ const statusLabel = computed(
       cancelled: "❌ Inscription annulée",
     })[registration.value?.status] || registration.value?.status,
 );
+
+const isPastEvent = computed(() => {
+  if (!event.value?.event_date) return false;
+  const start = new Date(event.value.event_date);
+  if (Number.isNaN(start.getTime())) return false;
+  return start.getTime() < Date.now();
+});
 
 onMounted(async () => {
   try {
