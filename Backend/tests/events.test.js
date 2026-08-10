@@ -124,11 +124,13 @@ describe("Events API Endpoints", () => {
         event_date: new Date().toISOString(),
         location: "Paris",
         max_participants: 20,
+        duration: 90,
         id_orga: orgaUserId,
         is_published: true,
       });
     expect(res.statusCode).toBe(201);
     expect(res.body.event).toBeDefined();
+    expect(res.body.event.duration).toBe(90);
 
     // Cleanup immédiat
     const id = res.body.event.id_event;
@@ -151,11 +153,13 @@ describe("Events API Endpoints", () => {
         event_date: new Date().toISOString(),
         location: "Lyon",
         max_participants: 15,
+        duration: 120,
         is_published: true,
         id_orga: orgaUserId,
       });
     expect(res.statusCode).toBe(200);
     expect(res.body.event.title).toBe("Updated Event");
+    expect(res.body.event.duration).toBe(120);
   });
 
   it("PUT /api/event/:id - 403 si mauvais organisateur", async () => {

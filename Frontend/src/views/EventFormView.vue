@@ -33,9 +33,15 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Nombre de places maximum *</label>
-          <input v-model.number="form.max_participants" type="number" class="form-input" min="1" max="10000" placeholder="100" required />
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Durée (minutes) *</label>
+            <input v-model.number="form.duration" type="number" class="form-input" min="15" step="15" placeholder="60" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nombre de places maximum *</label>
+            <input v-model.number="form.max_participants" type="number" class="form-input" min="1" max="10000" placeholder="100" required />
+          </div>
         </div>
 
         <div class="form-group">
@@ -85,8 +91,17 @@ const success   = ref('')
 
 const form = reactive({
   title: '', description: '', event_date: '',
-  location: '', max_participants: null, is_published: false
+  location: '', duration: 60, max_participants: null, is_published: false
 })
+
+function toDateTimeLocalValue(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const pad = (n) => String(n).padStart(2, '0')
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 onMounted(async () => {
   if (!isEdit.value) return
@@ -96,11 +111,12 @@ onMounted(async () => {
     form.title           = data.title || ''
     form.description     = data.description || ''
     form.location        = data.location || ''
+    form.duration        = Number(data.duration) || 60
     form.max_participants = data.max_participants
     form.is_published    = data.is_published
-    // Formate la date pour datetime-local
+    // Formate la date pour datetime-local sans conversion UTC
     if (data.event_date) {
-      form.event_date = new Date(data.event_date).toISOString().slice(0, 16)
+      form.event_date = toDateTimeLocalValue(data.event_date)
     }
   } catch (e) {
     error.value = 'Impossible de charger l\'événement'

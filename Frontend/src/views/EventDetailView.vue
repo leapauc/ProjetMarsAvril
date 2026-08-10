@@ -21,6 +21,8 @@
 
             <div class="detail-meta anim-up d1">
               <div class="meta-pill">📍 {{ event.location || "—" }}</div>
+              <div class="meta-pill">🕒 Début : {{ formattedStartTime }}</div>
+              <div class="meta-pill">🕔 Fin : {{ formattedEndTime }}</div>
               <div class="meta-pill">
                 👥 {{ event.remaining_spots }} places disponibles
               </div>
@@ -178,6 +180,33 @@ const regSuccess = ref("");
 const isOwner = computed(
   () => auth.isOrganizer && event.value?.id_orga === auth.user?.id_user,
 );
+
+const formattedStartTime = computed(() => {
+  if (!event.value?.event_date) return "—";
+
+  const start = new Date(event.value.event_date);
+  if (Number.isNaN(start.getTime())) return "—";
+
+  return start.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+});
+
+const formattedEndTime = computed(() => {
+  if (!event.value?.event_date) return "—";
+
+  const durationMinutes = Number(event.value.duration);
+  if (!Number.isFinite(durationMinutes) || durationMinutes < 0) return "—";
+
+  const start = new Date(event.value.event_date);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+  return end.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+});
 
 const formattedDate = computed(() => {
   if (!event.value?.event_date) return "—";

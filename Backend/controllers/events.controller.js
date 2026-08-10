@@ -72,12 +72,15 @@ exports.createEvent = async (req, res) => {
       max_participants,
       is_published,
       id_orga,
+      duration,
     } = req.body;
+
+    const safeDuration = Number(duration);
 
     const insertQuery = await pool.query(
       `INSERT INTO events 
-      (title, description, event_date, location, max_participants, id_orga, is_published, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+      (title, description, event_date, location, max_participants, id_orga, is_published, duration, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
       RETURNING *`,
       [
         title,
@@ -87,6 +90,7 @@ exports.createEvent = async (req, res) => {
         max_participants,
         id_orga,
         is_published || false,
+        Number.isFinite(safeDuration) ? safeDuration : 60,
       ],
     );
 
@@ -138,8 +142,8 @@ exports.updateEvent = async (req, res) => {
     }
 
     const updateQuery = await pool.query(
-      `UPDATE events SET title=$1, description=$2, event_date=$3, location=$4, max_participants=$5, is_published=$6
-       WHERE id_event=$7 RETURNING *`,
+      `UPDATE events SET title=$1, description=$2, event_date=$3, location=$4, max_participants=$5, is_published=$6, duration=$7
+       WHERE id_event=$8 RETURNING *`,
       [
         title,
         description,
@@ -147,6 +151,7 @@ exports.updateEvent = async (req, res) => {
         location,
         max_participants,
         is_published,
+        Number.isFinite(safeDuration) ? safeDuration : 60,
         id,
       ],
     );

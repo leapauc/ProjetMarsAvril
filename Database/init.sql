@@ -52,6 +52,7 @@ CREATE TABLE events (
     event_date TIMESTAMP,
     location VARCHAR,
     max_participants INTEGER,
+    duration INTEGER NOT NULL DEFAULT 60,
     id_orga INTEGER,
     is_published BOOLEAN,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -59,27 +60,27 @@ CREATE TABLE events (
 );
 
 INSERT INTO events
-(title, description, event_date, location, max_participants, id_orga, is_published, created_at)
+(title, description, event_date, location, max_participants, duration, id_orga, is_published, created_at)
 VALUES
-('Conférence Tech 2026', 'Conférence sur les nouvelles technologies', '2026-06-15 10:00:00', 'Paris', 100, 3, TRUE, NOW()),
-('Atelier Symfony', 'Workshop pratique Symfony', '2026-07-01 14:00:00', 'Lyon', 20, 6, TRUE, NOW()),
-('Hackathon IA', '48h de hackathon sur l’IA', '2026-08-10 09:00:00', 'Marseille', 50, 9, TRUE, NOW()),
-('Meetup Dev', 'Rencontre entre développeurs', '2026-05-20 18:00:00', 'Bordeaux', 30, 11, TRUE, NOW()),
-('Formation Vue.js', 'Formation frontend Vue.js', '2026-09-12 09:00:00', 'Toulouse', 25, 3, FALSE, NOW()),
-('Conférence Cybersécurité', 'Sécurité informatique', '2026-10-05 10:00:00', 'Paris', 80, 6, TRUE, NOW()),
-('Workshop Docker', 'Initiation Docker', '2026-06-25 13:00:00', 'Lille', 15, 9, TRUE, NOW()),
-('Afterwork Tech', 'Networking IT', '2026-07-18 19:00:00', 'Nantes', 40, 11, TRUE, NOW()),
-('Bootcamp Backend', 'Formation intensive backend', '2026-08-01 09:00:00', 'Paris', 20, 3, TRUE, NOW()),
-('Conférence Cloud', 'Cloud computing', '2026-11-15 10:00:00', 'Nice', 60, 6, TRUE, NOW());
+('Conférence Tech 2026', 'Conférence sur les nouvelles technologies', '2026-06-15 10:00:00', 'Paris', 100, 120, 3, TRUE, NOW()),
+('Atelier Symfony', 'Workshop pratique Symfony', '2026-07-01 14:00:00', 'Lyon', 20, 90, 6, TRUE, NOW()),
+('Hackathon IA', '48h de hackathon sur l’IA', '2026-08-10 09:00:00', 'Marseille', 50, 240, 9, TRUE, NOW()),
+('Meetup Dev', 'Rencontre entre développeurs', '2026-05-20 18:00:00', 'Bordeaux', 30, 60, 11, TRUE, NOW()),
+('Formation Vue.js', 'Formation frontend Vue.js', '2026-09-12 09:00:00', 'Toulouse', 25, 180, 3, FALSE, NOW()),
+('Conférence Cybersécurité', 'Sécurité informatique', '2026-10-05 10:00:00', 'Paris', 80, 120, 6, TRUE, NOW()),
+('Workshop Docker', 'Initiation Docker', '2026-06-25 13:00:00', 'Lille', 15, 90, 9, TRUE, NOW()),
+('Afterwork Tech', 'Networking IT', '2026-07-18 19:00:00', 'Nantes', 40, 60, 11, TRUE, NOW()),
+('Bootcamp Backend', 'Formation intensive backend', '2026-08-01 09:00:00', 'Paris', 20, 240, 3, TRUE, NOW()),
+('Conférence Cloud', 'Cloud computing', '2026-11-15 10:00:00', 'Nice', 60, 120, 6, TRUE, NOW());
 -- ÉVÉNEMENTS INTERNATIONAUX
 INSERT INTO events
-(title, description, event_date, location, max_participants, id_orga, is_published, created_at)
+(title, description, event_date, location, max_participants, duration, id_orga, is_published, created_at)
 VALUES
-('Tech Summit Chicago', 'International tech conference in Chicago', '2026-07-20 09:00:00', 'Chicago', 150, 3, TRUE, NOW()),
-('London Dev Meetup', 'Meetup for developers in London', '2026-08-15 18:00:00', 'Londres', 80, 6, TRUE, NOW()),
-('Berlin AI Workshop', 'Hands-on AI workshop in Berlin', '2026-09-10 10:00:00', 'Berlin', 50, 9, TRUE, NOW()),
-('Tokyo Startup Conference', 'Startup networking event in Tokyo', '2026-10-05 09:00:00', 'Tokyo', 200, 11, TRUE, NOW()),
-('New York Cloud Expo', 'Cloud computing expo in New York', '2026-11-12 10:00:00', 'New York', 180, 3, TRUE, NOW());
+('Tech Summit Chicago', 'International tech conference in Chicago', '2026-07-20 09:00:00', 'Chicago', 150, 180, 3, TRUE, NOW()),
+('London Dev Meetup', 'Meetup for developers in London', '2026-08-15 18:00:00', 'Londres', 80, 90, 6, TRUE, NOW()),
+('Berlin AI Workshop', 'Hands-on AI workshop in Berlin', '2026-09-10 10:00:00', 'Berlin', 50, 120, 9, TRUE, NOW()),
+('Tokyo Startup Conference', 'Startup networking event in Tokyo', '2026-10-05 09:00:00', 'Tokyo', 200, 150, 11, TRUE, NOW()),
+('New York Cloud Expo', 'Cloud computing expo in New York', '2026-11-12 10:00:00', 'New York', 180, 120, 3, TRUE, NOW());
 ---------------------------------------------------------
 -- CREATE AND FILL TABLE REGISTRATIONS
 ---------------------------------------------------------
