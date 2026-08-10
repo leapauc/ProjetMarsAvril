@@ -1,126 +1,189 @@
-# 🎟️ EventFlow — Plateforme de Gestion d'Événements
+# 🎟️ EventFlow — Plateforme de gestion d'événements
 
-> Projet intégrateur • Vue.js • Node.js • RGPD
-
----
-
-## Présentation du projet
-
-Projet disponible via l'url suivante : <https://frontend-eventflow.onrender.com/>
-
-### 🛠️ Stack technique
-
-![Vue.js](https://img.shields.io/badge/Vue.js-3-42b883?logo=vue.js)
-![Node.js](https://img.shields.io/badge/Node.js-Vite-339933?logo=node.js)
-![RGPD](https://img.shields.io/badge/RGPD-Conforme-red)
-![API](https://img.shields.io/badge/API-REST%20+%20JWT-blueviolet)
+> Projet intégrateur • Vue 3 • Node.js / Express • PostgreSQL • JWT • RGPD
 
 ---
 
-### 📖 Description
+## Présentation
 
-**EventFlow** est une application web de gestion d'événements professionnels  
-(conférences, meetups, formations).
+EventFlow est une application web de gestion d'événements professionnels, de conférences, formations ou meetups.
 
-- 👨‍💼 Les organisateurs créent et publient des événements
-- 🙋 Les participants s'inscrivent
-- ⚡ Architecture moderne : API Symfony + SPA Vue.js
-- 🔐 Conformité **RGPD native et complète**
+Le front est une SPA Vue 3 avec Vue Router et Pinia. Le back est une API REST Express connectée à PostgreSQL et documentée en OpenAPI via Swagger.
 
 ---
 
-### 📊 Informations projet
+## Stack technique
 
-| 👥 Équipe             | ⏱️ Durée | 🏆 Points   | 🎤 Soutenance | 📦 Livrables | 🔧 Git      |
-| --------------------- | -------- | ----------- | ------------- | ------------ | ----------- |
-| Binômes (2 étudiants) | 5 jours  | 100 + bonus | 25 min        | 5 livrables  | Obligatoire |
+- Frontend : Vue 3, Vite, Vue Router, Pinia, Axios
+- Backend : Node.js, Express 5, PostgreSQL via `pg`
+- Sécurité : JWT, hashage PostgreSQL `crypt`
+- Base de données : PostgreSQL + `pg_cron`
+- Documentation API : Swagger UI (`/api-docs`)
+- Notifications : Nodemailer, PDFKit, QRCode
+- Déploiement local : Docker Compose, Dockerfiles backend/frontend/database
 
 ---
 
-### 🚀 Fonctionnalités principales
+## Fonctionnalités principales
 
-- Création et gestion d'événements
-- Inscription des utilisateurs
-- Gestion des rôles (USER / ORGANIZER / ADMIN)
-- Notifications email
-- Sécurité JWT
-- Conformité RGPD (consentement, anonymisation)
+- Création, lecture, modification et suppression d'événements
+- Durée d'événement en minutes, calcul automatique de l'heure de fin
+- Gestion des inscriptions et blocage des inscriptions sur les événements passés
+- Tableau de bord par rôle : `USER`, `ORGANIZER`, `ADMIN`
+- Vue liste / calendrier par mois du dashboard selon les permissions
+- Consentement RGPD, journalisation des actions et anonymisation utilisateur
+- Envoi d'emails et génération de documents PDF / QR-code côté API
+- Gestion de statistiques et historique utilisateur
 
-## DOCKER
+---
 
-Un conteneur docker est à disposition afin d'avoir un environnement tout prêt pour tester cette application.
+## Architecture du projet
 
-Ce conteneur utilise un fichier .env dont un exemple de contenu est présenté dans .env.example
+### Backend
 
-La commande pour lancer le conteneur est la suivante :
+Le backend se trouve dans le dossier [Backend](Backend) et expose les endpoints suivants :
 
+- `/api/auth` : inscription, connexion, JWT
+- `/api/event` : CRUD événements
+- `/api/registrations` : gestion des inscriptions
+- `/api/me` : données personnelles et événements associés
+- `/api/consent` : consentement RGPD
+- `/api/history` : historique d'actions
+- `/api/stats` : statistiques disponibles
+
+Le point d'entrée de l'API est [Backend/app.js](Backend/app.js). La documentation Swagger est exposée via [Backend/swaggerOptions.js](Backend/swaggerOptions.js) sur `/api-docs`.
+
+### Frontend
+
+Le frontend est dans le dossier [Frontend](Frontend) et s'appuie sur les vues du dossier [Frontend/src/views](Frontend/src/views). Les routes principales sont déclarées dans [Frontend/src/router/index.js](Frontend/src/router/index.js) et les appels API passent par [Frontend/src/api/axios.js](Frontend/src/api/axios.js).
+
+---
+
+## Configuration locale
+
+### Variables d'environnement
+
+Le projet Docker attend un fichier `.env` placé dans le dossier [docker](docker) avec les variables suivantes :
+
+```env
+DB_HOST=localhost
+DB_PORT=5433
+DB_USER=postgres
+DB_PASSWORD=db_password
+DB_NAME=eventflow
+
+PORT=3000
+
+JWT_SECRET=jwt_secret_key
+JWT_EXPIRES_IN=1d
+
+EMAIL_USER=lea.pauchot@gmail.com
+EMAIL_PASS=email_password
+
+VITE_API_URL=http://localhost:3003/api
 ```
-docker compose --env-file .env -f docker-compose.yml up --build
+
+Un exemple complet est fourni dans [docker/.env.example](docker/.env.example).
+
+---
+
+## Lancement avec Docker
+
+Depuis le dossier [docker](docker) :
+
+```bash
+docker compose up --build
 ```
 
-Si vous voulez supprimer pour relancer de zéro :
+Pour reconstruire entièrement la base PostgreSQL à zéro :
 
-```
+```bash
 docker compose down
 docker volume rm docker_pgdata
+docker compose up --build
 ```
 
-## Backend
+Les services disponibles sont :
 
-Le backend a été développé en NodeJS.
+- `postgres` : base PostgreSQL sur le port `5433`
+- `api` : API Express sur le port `3003`
+- `frontend` : Vue/Vite servi par Nginx sur le port `5173`
 
-### Prérequis
+---
 
-Pour installer les dépendances :
+## Lancement manuel
 
-```
+### Backend
+
+Depuis [Backend](Backend) :
+
+```bash
 npm install
-```
-
-Dépendance installer :
-
-```
-npm init -y
-npm install express cors dotenv pg swagger-ui-express swagger-jsdoc jsonwebtoken pdfkit nodemailer node-cron
-npm install --save-dev jest supertest
-```
-
-## Lancement API
-
-Pour lancer l'API, il suffit de lancer la commande suivante :
-
-```
 npm start
 ```
 
-### Documentation API
+Le backend expose les commandes du package dans [Backend/package.json](Backend/package.json) :
 
-Documentation disponible à l'url suivante :
-<https://projetmarsavril.onrender.com/api-docs/>
-
-## Frontend
-
-Le Frontend a été développé en VueJS.
-
-### Prérequis
-
-Pour installer les dépendances :
-
+```json
+"scripts": {
+  "test": "jest",
+  "start": "node server.js"
+}
 ```
+
+### Frontend
+
+Depuis [Frontend](Frontend) :
+
+```bash
 npm install
-```
-
-Dépendance installer :
-
-```
-npm install vue@^3.5.13 vue-router@^4.5.0 pinia@^2.3.1 axios@^1.9.0 leaflet@^1.9.4
-npm install --save-dev vite@^6.3.5 @vitejs/plugin-vue@^5.2.1
-```
-
-## Lancement de l'application
-
-Pour lancer l'API, il suffit de lancer la commande suivante :
-
-```
 npm run dev
 ```
+
+Le build de production est :
+
+```bash
+npm run build
+```
+
+---
+
+## Documentation API
+
+L'API est documentée en Swagger UI. Une fois l'API démarrée localement, elle est disponible sur :
+
+<http://localhost:3003/api-docs/>
+
+
+---
+
+## Tests
+
+La suite Jest est organisée dans le dossier [Backend/tests](Backend/tests) et peut être lancée depuis le backend :
+
+```bash
+npm test
+```
+
+ou une suite ciblée :
+
+```bash
+npx jest tests/auth.test.js --runInBand
+```
+
+---
+
+## Rôles applicatifs
+
+- `USER` : consultation des événements, inscription, tableau de bord personnel
+- `ORGANIZER` : création / gestion des événements qu'il organise
+- `ADMIN` : administration globale, vue globale des événements + dashboard partagé
+
+---
+
+## Points techniques à connaître
+
+- Le schéma de base initialise la table `events` avec une colonne `duration` exprimée en minutes.
+- L'heure de fin d'un événement est calculée à partir de la date de début et de la durée.
+- Le frontend utilise un composant de vue calendrier/list dans le dashboard, selon le rôle et la collection d'événements chargée.
+- Les inscriptions sur des événements passés sont bloquées côté backend afin d'éviter l'inscription en lecture seule sur un événement déjà terminé.
