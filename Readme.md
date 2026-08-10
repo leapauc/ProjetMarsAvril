@@ -10,6 +10,11 @@ EventFlow est une application web de gestion d'événements professionnels, de c
 
 Le front est une SPA Vue 3 avec Vue Router et Pinia. Le back est une API REST Express connectée à PostgreSQL et documentée en OpenAPI via Swagger.
 
+Code disponible : <https://github.com/leapauc/ProjetMarsAvril/tree/lpa>
+
+Rem: Bien veiller à être sur la branche `lpa` du projet `ProjetMarsAvril`.
+
+
 ---
 
 ## Stack technique
