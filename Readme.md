@@ -85,7 +85,7 @@ JWT_EXPIRES_IN=1d
 EMAIL_USER=lea.pauchot@gmail.com
 EMAIL_PASS=email_password
 
-VITE_API_URL=http://localhost:3003/api
+VITE_API_URL=http://localhost:3010/api
 ```
 
 Un exemple complet est fourni dans [docker/.env.example](docker/.env.example).
@@ -111,7 +111,7 @@ docker compose up --build
 Les services disponibles sont :
 
 - `postgres` : base PostgreSQL sur le port `5433`
-- `api` : API Express sur le port `3003`
+- `api` : API Express sur le port `3010`
 - `frontend` : Vue/Vite servi par Nginx sur le port `5173`
 
 ---
@@ -157,7 +157,7 @@ npm run build
 
 L'API est documentée en Swagger UI. Une fois l'API démarrée localement, elle est disponible sur :
 
-<http://localhost:3003/api-docs/>
+<http://localhost:3010/api-docs/>
 
 
 ---

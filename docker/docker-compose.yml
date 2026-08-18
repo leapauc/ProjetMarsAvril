@@ -25,7 +25,7 @@ services:
     container_name: eventflow_api
     restart: always
     ports:
-      - "3003:3000"
+      - "3010:3000"
     environment:
       TZ: Europe/Paris
       DB_HOST: postgres

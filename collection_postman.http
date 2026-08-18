@@ -1,6 +1,6 @@
 # EventFlow API Collection (HTTP client format)
 # Variables provided by the active Postman / environment or VS Code REST Client:
-# {{baseUrl}} = http://localhost:3003
+# {{baseUrl}} = http://localhost:3010
 # {{userToken}} = token JWT USER
 # {{orgaToken}} = token JWT ORGANIZER
 # {{adminToken}} = token JWT ADMIN
@@ -8,7 +8,7 @@
 # {{testEventId}} = id_event created or existing
 # {{registrationId}} = id returned by /api/registrations/:id/register
 
-@baseUrl = http://localhost:3003
+@baseUrl = http://localhost:3010
 
 ### Auth - Register USER
 POST {{baseUrl}}/api/auth/register

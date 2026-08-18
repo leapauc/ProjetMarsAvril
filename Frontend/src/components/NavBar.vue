@@ -43,6 +43,16 @@
         </template>
       </div>
 
+      <!-- Theme toggle -->
+      <button
+        class="theme-toggle"
+        @click="theme.toggleTheme()"
+        :aria-label="theme.theme === 'dark' ? 'Activer le mode clair' : 'Activer le mode sombre'"
+        :title="theme.theme === 'dark' ? 'Mode clair' : 'Mode sombre'"
+      >
+        {{ theme.theme === 'dark' ? '☀️' : '🌙' }}
+      </button>
+
       <!-- Hamburger -->
       <button class="hamburger" @click="open = !open" :class="{ active: open }" aria-label="Menu">
         <span /><span /><span />
@@ -56,8 +66,10 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 
 const auth   = useAuthStore()
+const theme  = useThemeStore()
 const router = useRouter()
 const open   = ref(false)
 
@@ -79,7 +91,7 @@ function handleLogout() {
   top: 0;
   z-index: var(--z-nav);
   height: 72px;
-  background: rgba(7, 7, 26, 0.88);
+  background: var(--c-nav-bg);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--c-border);
 }
@@ -191,6 +203,7 @@ function handleLogout() {
 @media (max-width: 960px) {
   .nav-actions { display: none; }
   .hamburger   { display: flex; }
+  .theme-toggle { margin-left: auto; }
   .nav-links {
     display: none;
     position: absolute;
