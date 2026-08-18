@@ -718,11 +718,11 @@ th {
 }
 td {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--c-border);
   vertical-align: middle;
 }
 tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--c-card);
 }
 .td-date {
   color: var(--c-text-2);

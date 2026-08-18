@@ -98,10 +98,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { useRouter } from "vue-router";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import EventCard from "../components/EventCard.vue";
 import api from "../api/axios";
+
+const router = useRouter();
 
 const events = ref([]);
 const loading = ref(true);
@@ -219,6 +222,14 @@ async function initMap() {
     maxZoom: 19,
   }).addTo(leafletMap);
 
+  // Navigation SPA pour les liens injectés dans les popups (évite un rechargement complet)
+  leafletMap.getContainer().addEventListener("click", (ev) => {
+    const link = ev.target.closest(".popup-event-link");
+    if (!link) return;
+    ev.preventDefault();
+    router.push(`/events/${link.dataset.id}`);
+  });
+
   geocoding.value = true;
   const seen = new Set();
   for (const ev of filtered.value) {
@@ -233,7 +244,7 @@ async function initMap() {
       .map(
         (e) => `
       <div style="margin-bottom:8px;">
-        <a href="/events/${e.id_event}" style="font-weight:700;color:#7c3aed;text-decoration:none;">${e.title}</a>
+        <a href="/events/${e.id_event}" class="popup-event-link" data-id="${e.id_event}" style="font-weight:700;color:#7c3aed;text-decoration:none;">${e.title}</a>
         <div style="font-size:11px;color:#94a3b8;margin-top:2px;">
           ${new Date(e.event_date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
           · ${e.remaining_spots ?? "?"} place(s)

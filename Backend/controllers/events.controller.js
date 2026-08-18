@@ -6,7 +6,17 @@ const logUserAction = require("../utils/logUserAction");
 exports.getAllEvents = async (req, res) => {
   try {
     const eventsQuery = await pool.query(
-      "SELECT * FROM events WHERE is_published = TRUE ORDER BY event_date ASC",
+      `SELECT e.*,
+              e.max_participants - COALESCE(r.registered_count, 0) AS remaining_spots
+       FROM events e
+       LEFT JOIN (
+           SELECT id_event, COUNT(*) AS registered_count
+           FROM registrations
+           WHERE status != 'cancelled'
+           GROUP BY id_event
+       ) r ON e.id_event = r.id_event
+       WHERE e.is_published = TRUE
+       ORDER BY e.event_date ASC`,
     );
     res.json(eventsQuery.rows);
   } catch (err) {
